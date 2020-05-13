@@ -1,8 +1,7 @@
 <?php
 
+include_once './api.php';
 include_once './utils/getQueryData.php';
-include_once './utils/checkSign.php';
-include_once './utils/sendResponse.php';
 
 error_reporting(E_ERROR | E_PARSE);
 
@@ -37,13 +36,13 @@ $table = $url[0];
 $url = array_slice($url, 1);
 
 // Проверяем подпись и в случае неудачи формируем ответ
-if (!checkSign($_SERVER['HTTP_X_VK_SIGN'])) {
-    sendResponse("Wrong VK Sign", 401);
+if (!$api->checkSign($_SERVER['HTTP_X_VK_SIGN'])) {
+    $api->sendResponse("Wrong VK Sign", 401);
 }
 
 // Подключаем роутер и запускаем главную функцию
 if (!include_once 'routers/' . $table . '.php') {
-    sendResponse("Invalid table name", 404);
+    $api->sendResponse("Invalid table name", 404);
 }
 
 $router->route($method, $url, $data);

@@ -1,46 +1,72 @@
 <?php
 
-include_once __DIR__ . "./../utils/getDBH.php";
-include_once __DIR__ . "./../utils/sendResponse.php";
+include_once __DIR__ . "./../api.php";
 
-class Entries
+class Entries extends API
 {
-    // Роутер
     public function route($method, $url, $data)
     {
-        if ($method == 'GET' && count($url) == 0 && isset($data['userId']) && isset($data['date'])) {
-            sendResponse($this->getDatedEntries($data['userId'], $data['date']));
-        } elseif ($method == 'GET' && count($url) == 0 && isset($data['userId'])) {
-            sendResponse($this->getAllEntries($data['userId']));
+        if ($method == 'GET' && count($url) == 0) {
+            $this->getEntries($data);
+        } elseif ($method == 'POST' && count($url) == 0) {
+            $this->createEntry($data);
+        } elseif ($method == 'PUT' && count($url) == 0) {
+            $this->updateEntry($data);
+        } elseif ($method == 'DELETE' && count($url) == 0) {
+            $this->deleteEntry($data);
         } else {
-            sendResponse("No such method in 'entries' table", 400);
+            $this->sendResponse("No such method in 'entries' table", 400);
         }
     }
 
-    // GET /entries/?userId
-    // Возвращает все записи пользователя
-    private function getAllEntries($userId)
+    private function getEntries($data)
     {
-        $DBH = getDBH();
-        $STH = $DBH->prepare("SELECT * FROM entries WHERE userId = :userId");
-        $STH->setFetchMode(PDO::FETCH_ASSOC);
-        $STH->execute([':userId' => $userId]);
+        // Данные запроса
+        $query = "SELECT * FROM entries WHERE userId = :userId";
+        $params = $this->getParams($data, ["userId"], ["date"]);
 
-        $res = $STH->fetchAll();
-        return $res;
+        // Модифицируем запрос
+        if (!is_null($params["date"])) {
+            $query .= " AND date BETWEEN :date AND :date_end";
+            $params['date_end'] = $data["date"] . " 23:59:59";
+        }
+
+        // Делаем запрос
+        $res = $this->pdoQuery($query, $params, PDO::FETCH_ASSOC);
+        $this->sendResponse($res);
     }
 
-    // GET /entries/?userId&date
-    // Возвращает все записи пользователя с указанной датой
-    private function getDatedEntries($userId, $date)
+    private function createEntry($data)
     {
-        $DBH = getDBH();
-        $STH = $DBH->prepare("SELECT * FROM entries WHERE userId = :userId AND date BETWEEN :date_start AND :date_end");
-        $STH->setFetchMode(PDO::FETCH_ASSOC);
-        $STH->execute([':userId' => $userId, ':date_start' => $date, ':date_end' => $date . " 23:59:59"]);
+        // Данные запроса
+        $params = $this->getParams($data, ["userId", "mood", "stress", "anxiety", "isPublic"], ["title", "note"]);
+        $query = "INSERT INTO entries SET " . $this->getSetters($params);
 
-        $res = $STH->fetchAll();
-        return $res;
+        // Делаем запрос
+        $res = $this->pdoQuery($query, $params);
+        $this->sendResponse(null, 201);
+    }
+
+    private function updateEntry($data)
+    {
+        // Данные запроса
+        $params = $this->getParams($data, ["entryId"], ["mood", "stress", "anxiety", "isPublic", "title", "note"]);
+        $query = "UPDATE entries SET " . $this->getSetters($params) . " WHERE entryId = :entryId";
+
+        // Делаем запрос
+        $res = $this->pdoQuery($query, $params);
+        $this->sendResponse(null, 204);
+    }
+
+    private function deleteEntry($data)
+    {
+        // Данные запроса
+        $query = "DELETE FROM entries WHERE entryId = :entryId";
+        $params = $this->getParams($data, ["entryId"]);
+
+        // Делаем запрос
+        $res = $this->pdoQuery($query, $params);
+        $this->sendResponse(null, 204);
     }
 }
 

@@ -1,31 +1,32 @@
 <?php
 
-include_once __DIR__ . "./../utils/getVk.php";
-include_once __DIR__ . "./../utils/sendResponse.php";
+include_once __DIR__ . "./../api.php";
 
-class Vk
+class Vk extends API
 {
-    // Роутер
     public function route($method, $url, $data)
     {
-        if ($method == 'GET' && count($url) == 1 && $url[0] == 'users' && isset($data['userIds'])) {
-            sendResponse($this->getUsers($data['userIds']));
+        if ($method == 'GET' && count($url) == 1 && $url[0] == 'users') {
+            $this->getUsers($data);
         } else {
-            sendResponse("No such method in Vk Api", 400);
+            $this->sendResponse("No such method in Vk Api", 400);
         }
     }
 
-    // GET /vk/users/userIds[]
-    // Возвращает общие сведения о пользователях
-    private function getUsers($userIds)
+    private function getUsers($data)
     {
-        $vk = getVk();
-        $res = $vk->users()->get(ACCESS_TOKEN, [
-          'user_ids' => $userIds,
-          'fields' => ['photo_50'],
-        ]);
+        // Данные запроса
+        $params = $this->getParams($data, ["user_ids"]);
+        $params['fields'] = 'photo_50';
 
-        return $res;
+        // Делаем запрос
+        try {
+            $res = $this->vk->users()->get(self::ACCESS_TOKEN, $params);
+        } catch (Exception $e) {
+            $this->sendResponse($e->getMessage(), 400);
+        }
+
+        $this->sendResponse($res);
     }
 }
 
