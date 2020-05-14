@@ -36,6 +36,7 @@ class API
 
         try {
             $this->DBH = new PDO("mysql:host=" . self::HOST . ";dbname=" . self::DATABASE, self::USERNAME, self::PASSWORD);
+            $this->DBH->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         } catch (PDOException $exception) {
             $this->sendResponse($exception->getMessage(), 500);
         }
@@ -64,18 +65,20 @@ class API
             $STH->setFetchMode($fetchMode);
         }
 
-        if (!$STH->execute($newParams)) {
-            $this->sendResponse("PDO Query failed", 400);
+        try {
+            $STH->execute($newParams);
+        } catch (Exception $e) {
+            $this->sendResponse($e->getMessage(), 400);
         }
-
-        return $STH->fetchAll();
+        
+        return $STH;
     }
 
     public function sendResponse($responce = null, $code = 200)
     {
         http_response_code($code);
 
-        if ($code >= 100 && $code <= 299) {
+        if ($code == 200) {
             echo json_encode($responce);
         } else {
             $title = $code . " " . self::HTTP_CODE_NAMES[strval($code)];

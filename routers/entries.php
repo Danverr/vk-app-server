@@ -32,7 +32,7 @@ class Entries extends API
         }
 
         // Делаем запрос
-        $res = $this->pdoQuery($query, $params, PDO::FETCH_ASSOC);
+        $res = $this->pdoQuery($query, $params)->fetchAll();
         $this->sendResponse($res);
     }
 
@@ -43,7 +43,7 @@ class Entries extends API
         $query = "INSERT INTO entries SET " . $this->getSetters($params);
 
         // Делаем запрос
-        $res = $this->pdoQuery($query, $params);
+        $this->pdoQuery($query, $params);
         $this->sendResponse(null, 201);
     }
 
@@ -54,7 +54,7 @@ class Entries extends API
         $query = "UPDATE entries SET " . $this->getSetters($params) . " WHERE entryId = :entryId";
 
         // Делаем запрос
-        $res = $this->pdoQuery($query, $params);
+        $this->pdoQuery($query, $params);
         $this->sendResponse(null, 204);
     }
 
@@ -65,7 +65,7 @@ class Entries extends API
         $params = $this->getParams($data, ["entryId"]);
 
         // Делаем запрос
-        $res = $this->pdoQuery($query, $params);
+        $this->pdoQuery($query, $params);
         $this->sendResponse(null, 204);
     }
 }
