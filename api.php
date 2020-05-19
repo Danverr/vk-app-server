@@ -44,6 +44,8 @@ class API
 
     protected function getSetters($params)
     {
+        $query = "";
+
         foreach ($params as $param => $value) {
             $query .= $param . " = :" . $param . ", ";
         }
@@ -70,7 +72,7 @@ class API
         } catch (Exception $e) {
             $this->sendResponse($e->getMessage(), 400);
         }
-        
+
         return $STH;
     }
 

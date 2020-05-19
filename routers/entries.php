@@ -23,16 +23,20 @@ class Entries extends API
     {
         // Данные запроса
         $query = "SELECT * FROM entries WHERE userId = :userId";
-        $params = $this->getParams($data, ["userId"], ["date"]);
+        $params = $this->getParams($data, ["userId"], ["day", "month"]);
 
         // Модифицируем запрос
-        if (!is_null($params["date"])) {
-            $query .= " AND date BETWEEN :date AND :date_end";
-            $params['date_end'] = $data["date"] . " 23:59:59";
+        if (!is_null($params["day"])) {
+            $query .= " AND date >= :day AND date < DATE_ADD(:day, INTERVAL 1 DAY)";
+        } elseif (!is_null($params["month"])) {
+            $params["month"] .= "-01";
+            $query .= " AND date >= :month AND date < DATE_ADD(:month, INTERVAL 1 MONTH)";
         }
 
+        $query .= " ORDER BY date DESC";
+
         // Делаем запрос
-        $res = $this->pdoQuery($query, $params)->fetchAll();
+        $res = $this->pdoQuery($query, $params, PDO::FETCH_ASSOC)->fetchAll();
         $this->sendResponse($res);
     }
 
