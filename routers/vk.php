@@ -17,7 +17,7 @@ class Vk extends API
     {
         // Данные запроса
         $params = $this->getParams($data, ["user_ids"]);
-        $params['fields'] = 'photo_50';
+        $params['fields'] = ['photo_50','photo_100'];
 
         // Делаем запрос
         try {
