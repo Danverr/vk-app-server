@@ -76,7 +76,7 @@ class API
         return $STH;
     }
 
-    public function sendResponse($responce = null, $code = 200)
+    protected function sendResponse($responce = null, $code = 200)
     {
         http_response_code($code);
 
@@ -94,7 +94,7 @@ class API
         exit(0);
     }
 
-    public function getParams($data, $required, $optional = [])
+    protected function getParams($data, $required, $optional = [])
     {
         $res = [];
 
@@ -143,7 +143,7 @@ class API
         // Сравниваем полученную подпись со значением параметра 'sign'
         $status = $sign === $query_params['sign'];
 
-        return $status;
+        return $status ? $sign_params["vk_user_id"] : null;
     }
 }
 

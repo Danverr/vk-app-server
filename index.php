@@ -36,7 +36,8 @@ $table = $url[0];
 $url = array_slice($url, 1);
 
 // Проверяем подпись и в случае неудачи формируем ответ
-if (!$api->checkSign($_SERVER['HTTP_X_VK_SIGN'])) {
+$userId = $api->checkSign($_SERVER['HTTP_X_VK_SIGN']);
+if (is_null($userId)) {
     $api->sendResponse("Wrong VK Sign", 401);
 }
 
@@ -45,4 +46,4 @@ if (!include_once 'routers/' . $table . '.php') {
     $api->sendResponse("Invalid table name", 404);
 }
 
-$router->route($method, $url, $data);
+$router->route($method, $url, $data, $userId);
