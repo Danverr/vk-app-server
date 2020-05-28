@@ -48,8 +48,18 @@ class Entries extends API
 
         $query .= " ORDER BY date DESC";
 
-        // Делаем запрос
+        // Делаем запрос и форматируем данные
         $res = $this->pdoQuery($query, $params, PDO::FETCH_ASSOC)->fetchAll();
+        $res = array_map(function ($row) {
+            $row["entryId"] = (int)$row["entryId"];
+            $row["userId"] = (int)$row["userId"];
+            $row["mood"] = (int)$row["mood"];
+            $row["stress"] = (int)$row["stress"];
+            $row["anxiety"] = (int)$row["anxiety"];
+            $row["isPublic"] = (int)$row["isPublic"] == 1;
+            return $row;
+        }, $res);
+
         $this->sendResponse($res);
     }
 
@@ -68,8 +78,16 @@ class Entries extends API
             $this->sendResponse("You don't have permission to do this", 403);
         }
 
-        // Делаем запрос
+        // Делаем запрос и форматируем данные
         $res = $this->pdoQuery($query, $params, PDO::FETCH_ASSOC)->fetchAll();
+        $res = array_map(function ($row) {
+            $row["entryId"] = (int)$row["entryId"];
+            $row["mood"] = (int)$row["mood"];
+            $row["stress"] = (int)$row["stress"];
+            $row["anxiety"] = (int)$row["anxiety"];
+            return $row;
+        }, $res);
+
         $this->sendResponse($res);
     }
 

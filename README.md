@@ -9,7 +9,7 @@
        * [DELETE /statAccess/](#delete-stataccess)
    * entries
        * [GET /entries/](#get-entries)
-       * [GET /entries/stats](#get-entries-stats)
+       * [GET /entries/stats](#get-entriesstats)
        * [POST /entries/](#post-entries)
        * [PUT /entries/](#put-entries)    
        * [DELETE /entries/](#delete-entries)
@@ -89,28 +89,29 @@ const App = () => {
 #### Параметры
 * **userId** *(обязательно)* - VK ID пользователя
 #### Ответ
-Массив строк с id пользователей
+Массив чисел - id пользователей, *int 4B*
 #### Пример
 ```json
 [
-    "270029019",
-    "505643430"
+    281105343,
+    331480448,
+    505643430
 ]
 ```
 
 ## POST /statAccess/
 Создает новую пару доступа из id пользователей.
 #### Параметры
-* **toId** *(обязательно)* - VK ID пользователя, котрому *дан доступ*
-* **fromId** *(обязательно)* - VK ID пользователя, который *дал доступ*
+* **toId** *(обязательно)* - VK ID пользователя, котрому дан доступ
+* **fromId** *(обязательно)* - VK ID пользователя, который дал доступ
 #### Ответ
 В случае успеха вернет строку ```201 Created```
 
 ## DELETE /statAccess/
 Удаляет пару доступа.
 #### Параметры
-* **toId** *(обязательно)* - VK ID пользователя, котрому *дан доступ*
-* **fromId** *(обязательно)* - VK ID пользователя, который *дал доступ*
+* **toId** *(обязательно)* - VK ID пользователя, котрому дан доступ
+* **fromId** *(обязательно)* - VK ID пользователя, который дал доступ
 #### Ответ
 В случае успеха вернет пустой ответ
 
@@ -126,27 +127,27 @@ const App = () => {
 * Если указаны параметры **day** и **month** одновременно, то учитываться будет только **day**!
 #### Ответ
 Массив объектов с полями:
-* **entryId** - ID записи
-* **userId** - ID пользователя
-* **mood** - Настроение от 1 до 5
-* **stress** - Стресс от 1 до 5
-* **anxiety** - Тревожность от 1 до 5
-* **title** - Заголовок записи
-* **note** - Текст записи
-* **isPublic** - Доступно ли друзьям
-* **date** - Дата по UTC в формате YYYY-MM-DD HH:MM:SS
+* **entryId** - ID записи, *int 4B*
+* **userId** - ID пользователя, *int 4B*
+* **mood** - Настроение от 1 до 5, *int 1B*
+* **stress** - Стресс от 1 до 5, *int 1B*
+* **anxiety** - Тревожность от 1 до 5, *int 1B*
+* **title** - Заголовок записи, *string 64sym*
+* **note** - Текст записи, *string 2048sym*
+* **isPublic** - Доступно ли друзьям, *bool*
+* **date** - Дата по UTC в формате YYYY-MM-DD HH:MM:SS, *string*
 #### Пример
 ```json
 [
     {
-        "entryId": "1",
-        "userId": "331480448",
-        "mood": "1",
-        "stress": "2",
-        "anxiety": "3",
+        "entryId": 1,
+        "userId": 331480448,
+        "mood": 1,
+        "stress": 2,
+        "anxiety": 3,
         "title": "asaasdar",
         "note": "asdafasfsahsifjvksaor",
-        "isPublic": "0",
+        "isPublic": true,
         "date": "2020-05-05 00:00:00"
     }
 ]
@@ -158,19 +159,19 @@ const App = () => {
 * **userId** *(обязательно)* - VK ID пользователя
 #### Ответ
 Массив объектов с полями:
-* **entryId** - ID записи
-* **mood** - Настроение от 1 до 5
-* **stress** - Стресс от 1 до 5
-* **anxiety** - Тревожность от 1 до 5
-* **date** - Дата по UTC в формате YYYY-MM-DD HH:MM:SS
+* **entryId** - ID записи, *int 4B*
+* **mood** - Настроение от 1 до 5, *int 1B*
+* **stress** - Стресс от 1 до 5, *int 1B*
+* **anxiety** - Тревожность от 1 до 5, *int 1B*
+* **date** - Дата по UTC в формате YYYY-MM-DD HH:MM:SS, *string*
 #### Пример
 ```json
 [
     {
-        "entryId": "1",
-        "mood": "1",
-        "stress": "2",
-        "anxiety": "3",
+        "entryId": 1,
+        "mood": 1,
+        "stress": 2,
+        "anxiety": 3,
         "date": "2020-05-23 17:29:00"       
     }
 ]

@@ -30,7 +30,7 @@ class StatAccess extends API
             $this->sendResponse("You don't have permission to do this", 403);
         }
 
-        // Делаем запрос
+        // Делаем запрос и форматируем данные
         $res = $this->pdoQuery($query, $params)->fetchAll();
         $res = array_map(function ($row) {
             return (int)$row['fromId'];

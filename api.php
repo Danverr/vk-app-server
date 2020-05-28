@@ -76,7 +76,7 @@ class API
         return $STH;
     }
 
-    protected function sendResponse($responce = null, $code = 200)
+    public function sendResponse($responce = null, $code = 200)
     {
         http_response_code($code);
 
