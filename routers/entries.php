@@ -28,14 +28,16 @@ class Entries extends API
         $params = $this->getParams($data, ["userId"], ["day", "month"]);
 
         // Проверяем права доступа
-        $checkQuery = "SELECT 1 FROM statAccess WHERE toId = :toId AND fromId = :fromId";
-        $checkParams = ["toId" => $userId, "fromId" => $params["userId"]];
-        $res = $this->pdoQuery($checkQuery, $checkParams)->fetchAll();
+        if ($userId != $params["userId"]) {
+            $checkQuery = "SELECT 1 FROM statAccess WHERE toId = :toId AND fromId = :fromId";
+            $checkParams = ["toId" => $userId, "fromId" => $params["userId"]];
+            $res = $this->pdoQuery($checkQuery, $checkParams)->fetchAll();
 
-        if (count($res) == 0) {
-            $this->sendResponse("You don't have permission to do this", 403);
-        } elseif ($params["userId"] != $userId) {
-            $query .= " AND isPublic = 1";
+            if (count($res) == 0) {
+                $this->sendResponse("You don't have permission to do this", 403);
+            } else {
+                $query .= " AND isPublic = 1";
+            }
         }
 
         // Модифицируем запрос
@@ -70,12 +72,14 @@ class Entries extends API
         $params = $this->getParams($data, ["userId"]);
 
         // Проверяем права доступа
-        $checkQuery = "SELECT 1 FROM statAccess WHERE toId = :toId AND fromId = :fromId";
-        $checkParams = ["toId" => $userId, "fromId" => $params["userId"]];
-        $res = $this->pdoQuery($checkQuery, $checkParams)->fetchAll();
+        if ($userId != $params["userId"]) {
+            $checkQuery = "SELECT 1 FROM statAccess WHERE toId = :toId AND fromId = :fromId";
+            $checkParams = ["toId" => $userId, "fromId" => $params["userId"]];
+            $res = $this->pdoQuery($checkQuery, $checkParams)->fetchAll();
 
-        if (count($res) == 0) {
-            $this->sendResponse("You don't have permission to do this", 403);
+            if (count($res) == 0) {
+                $this->sendResponse("You don't have permission to do this", 403);
+            }
         }
 
         // Делаем запрос и форматируем данные
