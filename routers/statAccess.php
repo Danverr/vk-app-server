@@ -22,18 +22,27 @@ class StatAccess extends API
     private function getUserPairs($data, $userId)
     {
         // Данные запроса
-        $query = "SELECT fromId FROM statAccess WHERE toId = :userId";
-        $params = $this->getParams($data, ["userId"]);
+        $query = "SELECT * FROM statAccess WHERE";
+        $params = $this->getParams($data, [], ["toId", "fromId"]);
+
+        // Проверяем параметры
+        if (count($params) != 1) {
+            $this->sendResponse("Expected either 'toId' or 'fromId' parameter", 400);
+        }
+
+        $key = array_keys($params)[0];
+        $opposite_key = $key == "toId" ? "fromId" : "toId";
+        $query .= " $key = :$key";
 
         // Проверяем права доступа
-        if ($params["userId"] != $userId) {
+        if ($params[$key] != $userId) {
             $this->sendResponse("You don't have permission to do this", 403);
         }
 
-        // Делаем запрос и форматируем данные
+        // Делаем запрос
         $res = $this->pdoQuery($query, $params)->fetchAll();
-        $res = array_map(function ($row) {
-            return (int)$row['fromId'];
+        $res = array_map(function ($row) use ($opposite_key) {
+            return (int)$row[$opposite_key];
         }, $res);
 
         $this->sendResponse($res);
