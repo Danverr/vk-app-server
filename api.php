@@ -1,9 +1,5 @@
 <?php
 
-include_once __DIR__ . "./vendor/autoload.php";
-use VK\Client\VKApiClient;
-use VK\Client\Enums\VKLanguage;
-
 class API
 {
     protected const CLIENT_SECRET = 'vrikjcw4PJpIvKWswil8';
@@ -24,16 +20,10 @@ class API
     private const USERNAME = "4xv3ZUe5kc";
     private const PASSWORD = "ooRAVaHThw";
     private const DATABASE = "4xv3ZUe5kc";
-
-    protected $vk;
     protected $DBH;
-
-    //public function route($method, $url, $data);
 
     public function __construct()
     {
-        $this->vk = new VKApiClient(5.103, VKLanguage::RUSSIAN);
-
         try {
             $this->DBH = new PDO("mysql:host=" . self::HOST . ";dbname=" . self::DATABASE, self::USERNAME, self::PASSWORD);
             $this->DBH->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
