@@ -98,7 +98,7 @@ class Entries extends API
     private function createEntry($data, $userId)
     {
         // Данные запроса
-        $params = $this->getParams($data, ["userId", "mood", "stress", "anxiety","title", "note", "isPublic"]);
+        $params = $this->getParams($data, ["userId", "mood", "stress", "anxiety", "isPublic"], ["title", "note", "date"]);
         $query = "INSERT INTO entries SET " . $this->getSetters($params);
 
         // Проверяем права доступа
