@@ -44,13 +44,13 @@ class API
         return $query;
     }
 
-    protected function pdoQuery($query, $params, $fetchMode = null)
+    protected function pdoQuery($query, $params = [], $addColon = true, $fetchMode = null)
     {
         $STH = $this->DBH->prepare($query);
         $newParams = [];
 
         foreach ($params as $param => $value) {
-            $newParams[":" . $param] = $value;
+            $newParams[($addColon ? ":" : "") . $param] = $value;
         }
 
         if (!is_null($fetchMode)) {
@@ -70,15 +70,17 @@ class API
     {
         http_response_code($code);
 
-        if ($code == 200) {
-            echo json_encode($responce);
-        } else {
-            $title = $code . " " . self::HTTP_CODE_NAMES[strval($code)];
-            if (!is_null($responce)) {
-                $title .= ": ";
-            }
+        if ($responce != null) {
+            if ($code < 300) {
+                echo json_encode($responce);
+            } else {
+                $title = $code . " " . self::HTTP_CODE_NAMES[strval($code)];
+                if (!is_null($responce)) {
+                    $title .= ": ";
+                }
 
-            echo json_encode($title . $responce);
+                echo json_encode($title . $responce);
+            }
         }
 
         exit(0);

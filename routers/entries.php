@@ -11,7 +11,7 @@ class Entries extends API
         } elseif ($method == 'GET' && count($url) == 1 && $url[0] == "stats") {
             $this->getStats($data, $userId);
         } elseif ($method == 'POST' && count($url) == 0) {
-            $this->createEntry($data, $userId);
+            $this->createEntries($data, $userId);
         } elseif ($method == 'PUT' && count($url) == 0) {
             $this->updateEntry($data, $userId);
         } elseif ($method == 'DELETE' && count($url) == 0) {
@@ -51,7 +51,7 @@ class Entries extends API
         $query .= " ORDER BY date DESC";
 
         // Делаем запрос и форматируем данные
-        $res = $this->pdoQuery($query, $params, PDO::FETCH_ASSOC)->fetchAll();
+        $res = $this->pdoQuery($query, $params, true, PDO::FETCH_ASSOC)->fetchAll();
         $res = array_map(function ($row) {
             $row["entryId"] = (int)$row["entryId"];
             $row["userId"] = (int)$row["userId"];
@@ -68,8 +68,8 @@ class Entries extends API
     private function getStats($data, $userId)
     {
         // Данные запроса
-        $query = "SELECT entryId, mood, stress, anxiety, date FROM entries WHERE userId = :userId ORDER BY date DESC";
-        $params = $this->getParams($data, ["userId"]);
+        $query = "SELECT entryId, mood, stress, anxiety, date FROM entries WHERE userId = :userId";
+        $params = $this->getParams($data, ["userId"], ["startDate"]);
 
         // Проверяем права доступа
         if ($userId != $params["userId"]) {
@@ -82,8 +82,15 @@ class Entries extends API
             }
         }
 
+        // Модифицируем запрос
+        if (!is_null($params["startDate"])) {
+            $query .= " AND date >= :startDate";
+        }
+
+        $query .= " ORDER BY date DESC";
+
         // Делаем запрос и форматируем данные
-        $res = $this->pdoQuery($query, $params, PDO::FETCH_ASSOC)->fetchAll();
+        $res = $this->pdoQuery($query, $params, true, PDO::FETCH_ASSOC)->fetchAll();
         $res = array_map(function ($row) {
             $row["entryId"] = (int)$row["entryId"];
             $row["mood"] = (int)$row["mood"];
@@ -95,31 +102,47 @@ class Entries extends API
         $this->sendResponse($res);
     }
 
-    private function createEntry($data, $userId)
+    private function createEntries($data, $userId)
     {
         // Данные запроса
-        $params = $this->getParams($data, ["userId", "mood", "stress", "anxiety", "isPublic"], ["title", "note", "date"]);
-        $query = "INSERT INTO entries SET " . $this->getSetters($params);
+        $data = $this->getParams($data, ["csv"]);
+        $csv = str_getcsv($data["csv"]);
+        $query = "INSERT INTO entries (userId, mood, stress, anxiety, title, note, isPublic, date) VALUES";
+        $params = [];
+        $cols = ["mood", "stress", "anxiety", "title", "note", "isPublic", "date"];
 
-        // Проверяем права доступа
-        if ($params["userId"] != $userId) {
-            $this->sendResponse("You don't have permission to do this", 403);
-        }
-
-        // Проверяем правильность данных
-        if ($params["mood"] < 1 || $params["mood"] > 5) {
-            $this->sendResponse("'mood' param must be from 1 to 5 inclusive", 400);
-        }
-        if ($params["stress"] < 1 || $params["stress"] > 5) {
-            $this->sendResponse("'stress' param must be from 1 to 5 inclusive", 400);
-        }
-        if ($params["anxiety"] < 1 || $params["anxiety"] > 5) {
-            $this->sendResponse("'anxiety' param must be from 1 to 5 inclusive", 400);
+        if (count($csv) % count($cols) != 0) {
+            $this->sendResponse("There must be " . count($cols) . " values on each row, but " . count($csv) % count($cols)  . " extra found", 400);
         }
 
-        // Делаем запрос
-        $this->pdoQuery($query, $params);
-        $this->sendResponse(null, 201);
+        for ($i = 0; $i < count($csv); $i += count($cols)) {
+            // Модифицируем запрос
+            $query .= ($i ? ", " : " ") . "(?, ";
+            $params[] = $userId; // userId
+
+            for ($j=0; $j < count($cols); $j++) {
+                $query .= ($j == count($cols) - 1 ? "?)" : "?, ");
+
+                if ($j <= 2) { // mood, stress, anxiety
+                    $params[] = (int)$csv[$i + $j];
+
+                    if (end($params) < 1 || end($params) > 5) {
+                        $this->sendResponse($cols[$j] . " param (#" . ($j + 1) . ") must be from 1 to 5 inclusive in row " . ($i / count($cols) + 1), 400);
+                    }
+                } elseif ($j == 5) { // isPublic
+                    $params[] = (int)$csv[$i + $j];
+
+                    if (end($params) < 0 || end($params) > 1) {
+                        $this->sendResponse($cols[$j] . " param (#" . ($j + 1) . ") must be from 0 to 1 inclusive in row " . ($i / count($cols) + 1), 400);
+                    }
+                } else {
+                    $params[] = $csv[$i + $j];
+                }
+            }
+        }
+
+        $this->pdoQuery($query, $params, false);
+        $this->sendResponse((int)$this->DBH->lastInsertId(), 201);
     }
 
     private function updateEntry($data, $userId)
@@ -146,6 +169,9 @@ class Entries extends API
         }
         if ($params["anxiety"] < 1 || $params["anxiety"] > 5) {
             $this->sendResponse("'anxiety' param must be from 1 to 5 inclusive", 400);
+        }
+        if ($params["isPublic"] < 0 || $params["isPublic"] > 1) {
+            $this->sendResponse("'isPublic' param must be from 0 to 1 inclusive", 400);
         }
 
         // Делаем запрос

@@ -23,26 +23,21 @@ class StatAccess extends API
     {
         // Данные запроса
         $query = "SELECT * FROM statAccess WHERE";
-        $params = $this->getParams($data, [], ["toId", "fromId"]);
+        $params["userId"] = $userId;
 
         // Проверяем параметры
-        if (count($params) != 1) {
-            $this->sendResponse("Expected either 'toId' or 'fromId' parameter", 400);
-        }
-
-        $key = array_keys($params)[0];
-        $opposite_key = $key == "toId" ? "fromId" : "toId";
-        $query .= " $key = :$key";
-
-        // Проверяем права доступа
-        if ($params[$key] != $userId) {
-            $this->sendResponse("You don't have permission to do this", 403);
+        if ($data["type"] == "toId") {
+            $query .= " fromId = :userId";
+        } elseif ($data["type"] == "fromId") {
+            $query .= " toId = :userId";
+        } else {
+            $this->sendResponse("'type' property must equal only 'toId' or 'fromId'", 400);
         }
 
         // Делаем запрос
         $res = $this->pdoQuery($query, $params)->fetchAll();
-        $res = array_map(function ($row) use ($opposite_key) {
-            return (int)$row[$opposite_key];
+        $res = array_map(function ($row) use ($data) {
+            return (int)$row[$data["type"]];
         }, $res);
 
         $this->sendResponse($res);
