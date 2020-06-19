@@ -8,6 +8,8 @@ class Entries extends API
     {
         if ($method == 'GET' && count($url) == 0) {
             $this->getEntries($data, $userId);
+        } elseif ($method == 'GET' && count($url) == 1 && $url[0] == "all") {
+            $this->getAllEntries($data, $userId);
         } elseif ($method == 'GET' && count($url) == 1 && $url[0] == "stats") {
             $this->getStats($data, $userId);
         } elseif ($method == 'POST' && count($url) == 0) {
@@ -21,6 +23,18 @@ class Entries extends API
         }
     }
 
+    private function getAccess($userId)
+    {
+        $query = "SELECT * FROM statAccess WHERE toId = :toId";
+
+        $res = $this->pdoQuery($query, ["toId" => $userId]);
+        $res = array_map(function ($row) {
+            return (int)$row["fromId"];
+        }, $res);
+
+        return $res;
+    }
+
     private function getEntries($data, $userId)
     {
         // Данные запроса
@@ -29,11 +43,9 @@ class Entries extends API
 
         // Проверяем права доступа
         if ($userId != $params["userId"]) {
-            $checkQuery = "SELECT 1 FROM statAccess WHERE toId = :toId AND fromId = :fromId";
-            $checkParams = ["toId" => $userId, "fromId" => $params["userId"]];
-            $res = $this->pdoQuery($checkQuery, $checkParams)->fetchAll();
+            $access = $this->getAccess($userId);
 
-            if (count($res) == 0) {
+            if (array_search($params["userId"], $access) === false) {
                 $this->sendResponse("You don't have permission to do this", 403);
             } else {
                 $query .= " AND isPublic = 1";
@@ -50,18 +62,37 @@ class Entries extends API
 
         $query .= " ORDER BY date DESC";
 
-        // Делаем запрос и форматируем данные
-        $res = $this->pdoQuery($query, $params, true, PDO::FETCH_ASSOC)->fetchAll();
-        $res = array_map(function ($row) {
-            $row["entryId"] = (int)$row["entryId"];
-            $row["userId"] = (int)$row["userId"];
-            $row["mood"] = (int)$row["mood"];
-            $row["stress"] = (int)$row["stress"];
-            $row["anxiety"] = (int)$row["anxiety"];
-            $row["isPublic"] = (int)$row["isPublic"] == 1;
-            return $row;
-        }, $res);
+        // Делаем запрос
+        $res = $this->pdoQuery($query, $params);
+        $this->sendResponse($res);
+    }
 
+    private function getAllEntries($data, $userId)
+    {
+        // Формируем список юзеров к которым есть доступ
+        $access = $this->getAccess($userId);
+
+        // Данные запроса
+        $matchUsers = count($access) ? "OR (userId IN (" . implode(", ", $access) . ") AND isPublic = 1)" : "";
+        $subQuery = "SELECT entryId FROM entries WHERE userId = :userId $matchUsers ORDER BY date DESC, entryId LIMIT :skip, :count";
+        $query = "SELECT * FROM ($subQuery) ids INNER JOIN entries using(entryId) ORDER BY date DESC, entryId";
+        $params = $this->getParams($data, ["skip", "count"]);
+
+        // Делаем запрос
+        $STH = $this->DBH->prepare($query);
+        $STH->setFetchMode(PDO::FETCH_ASSOC);
+
+        $STH->bindValue(':skip', $params["skip"], PDO::PARAM_INT);
+        $STH->bindValue(':count', $params["count"], PDO::PARAM_INT);
+        $STH->bindValue(':userId', $userId);
+
+        try {
+            $STH->execute();
+        } catch (Exception $e) {
+            $this->sendResponse($e->getMessage(), 400);
+        }
+
+        $res = $STH->fetchAll();
         $this->sendResponse($res);
     }
 
@@ -73,11 +104,9 @@ class Entries extends API
 
         // Проверяем права доступа
         if ($userId != $params["userId"]) {
-            $checkQuery = "SELECT 1 FROM statAccess WHERE toId = :toId AND fromId = :fromId";
-            $checkParams = ["toId" => $userId, "fromId" => $params["userId"]];
-            $res = $this->pdoQuery($checkQuery, $checkParams)->fetchAll();
+            $access = $this->getAccess($userId);
 
-            if (count($res) == 0) {
+            if (array_search($params["userId"], $access) === false) {
                 $this->sendResponse("You don't have permission to do this", 403);
             }
         }
@@ -90,15 +119,7 @@ class Entries extends API
         $query .= " ORDER BY date DESC";
 
         // Делаем запрос и форматируем данные
-        $res = $this->pdoQuery($query, $params, true, PDO::FETCH_ASSOC)->fetchAll();
-        $res = array_map(function ($row) {
-            $row["entryId"] = (int)$row["entryId"];
-            $row["mood"] = (int)$row["mood"];
-            $row["stress"] = (int)$row["stress"];
-            $row["anxiety"] = (int)$row["anxiety"];
-            return $row;
-        }, $res);
-
+        $res = $this->pdoQuery($query, $params);
         $this->sendResponse($res);
     }
 
@@ -141,8 +162,12 @@ class Entries extends API
             }
         }
 
-        $this->pdoQuery($query, $params, false);
-        $this->sendResponse((int)$this->DBH->lastInsertId(), 201);
+        // Делаем запрос
+        $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT", "NO_COLON"]);
+        $this->sendResponse([
+          "rowsAdded" => $res,
+          "lastId" => $this->DBH->lastInsertId(),
+        ], 201);
     }
 
     private function updateEntry($data, $userId)
@@ -152,11 +177,10 @@ class Entries extends API
         $query = "UPDATE entries SET " . $this->getSetters($params) . " WHERE entryId = :entryId";
 
         // Проверяем права доступа
-        $checkQuery = "SELECT 1 FROM entries WHERE entryId = :entryId AND userId = :userId";
-        $checkParams = ["entryId" => $params["entryId"], "userId" => $userId];
-        $res = $this->pdoQuery($checkQuery, $checkParams)->fetchAll();
+        $checkQuery = "SELECT userId FROM entries WHERE entryId = :entryId";
+        $res = $this->pdoQuery($checkQuery, ["entryId" => $params["entryId"]]);
 
-        if (count($res) == 0) {
+        if (count($res) && $res[0]["userId"] != $userId) {
             $this->sendResponse("You don't have permission to do this", 403);
         }
 
@@ -175,8 +199,8 @@ class Entries extends API
         }
 
         // Делаем запрос
-        $this->pdoQuery($query, $params);
-        $this->sendResponse(null, 204);
+        $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
+        $this->sendResponse($res);
     }
 
     private function deleteEntry($data, $userId)
@@ -186,17 +210,16 @@ class Entries extends API
         $params = $this->getParams($data, ["entryId"]);
 
         // Проверяем права доступа
-        $checkQuery = "SELECT * FROM entries WHERE entryId = :entryId AND userId = :userId";
-        $checkParams = ["entryId" => $params["entryId"], "userId" => $userId];
-        $res = $this->pdoQuery($checkQuery, $checkParams)->fetchAll();
+        $checkQuery = "SELECT userId FROM entries WHERE entryId = :entryId";
+        $res = $this->pdoQuery($checkQuery, ["entryId" => $params["entryId"]]);
 
-        if (count($res) == 0) {
+        if (count($res) && $res[0]["userId"] != $userId) {
             $this->sendResponse("You don't have permission to do this", 403);
         }
 
         // Делаем запрос
-        $this->pdoQuery($query, $params);
-        $this->sendResponse(null, 204);
+        $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
+        $this->sendResponse($res);
     }
 }
 

@@ -44,17 +44,17 @@ class API
         return $query;
     }
 
-    protected function pdoQuery($query, $params = [], $addColon = true, $fetchMode = null)
+    protected function pdoQuery($query, $params = [], $options = [])
     {
+        $NO_COLON = array_search("NO_COLON", $options) !== false;
+        $RETURN_ROW_COUNT = array_search("RETURN_ROW_COUNT", $options) !== false;
+
         $STH = $this->DBH->prepare($query);
+        $STH->setFetchMode(PDO::FETCH_ASSOC);
         $newParams = [];
 
         foreach ($params as $param => $value) {
-            $newParams[($addColon ? ":" : "") . $param] = $value;
-        }
-
-        if (!is_null($fetchMode)) {
-            $STH->setFetchMode($fetchMode);
+            $newParams[($NO_COLON ? "" : ":") . $param] = $value;
         }
 
         try {
@@ -63,26 +63,28 @@ class API
             $this->sendResponse($e->getMessage(), 400);
         }
 
-        return $STH;
+        if ($RETURN_ROW_COUNT) {
+            return $STH->rowCount();
+        } else {
+            return $STH->fetchAll();
+        }
     }
 
     public function sendResponse($responce = null, $code = 200)
     {
         http_response_code($code);
 
-        if ($responce != null) {
-            if ($code < 300) {
-                echo json_encode($responce);
-            } else {
-                $title = $code . " " . self::HTTP_CODE_NAMES[strval($code)];
-                if (!is_null($responce)) {
-                    $title .= ": ";
-                }
+        if ($responce != null && $code >= 400) {
+            $title = $code . " " . self::HTTP_CODE_NAMES[strval($code)];
 
-                echo json_encode($title . $responce);
+            if (!is_null($responce)) {
+                $title .= ": ";
             }
+
+            $responce = $title . $responce;
         }
 
+        echo json_encode($responce, JSON_NUMERIC_CHECK);
         exit(0);
     }
 

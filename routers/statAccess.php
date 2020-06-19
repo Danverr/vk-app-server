@@ -35,9 +35,9 @@ class StatAccess extends API
         }
 
         // Делаем запрос
-        $res = $this->pdoQuery($query, $params)->fetchAll();
+        $res = $this->pdoQuery($query, $params);
         $res = array_map(function ($row) use ($data) {
-            return (int)$row[$data["type"]];
+            return $row[$data["type"]];
         }, $res);
 
         $this->sendResponse($res);
@@ -46,33 +46,25 @@ class StatAccess extends API
     private function createUserPair($data, $userId)
     {
         // Данные запроса
-        $params = $this->getParams($data, ["toId", "fromId"]);
+        $params = $this->getParams($data, ["toId"]);
+        $params["fromId"] = $userId;
         $query = "INSERT INTO statAccess SET " . $this->getSetters($params);
 
-        // Проверяем права доступа
-        if ($params["fromId"] != $userId) {
-            $this->sendResponse("You don't have permission to do this", 403);
-        }
-
         // Делаем запрос
-        $this->pdoQuery($query, $params);
-        $this->sendResponse(null, 201);
+        $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
+        $this->sendResponse($res, 201);
     }
 
     private function deleteUserPair($data, $userId)
     {
         // Данные запроса
-        $params = $this->getParams($data, ["toId", "fromId"]);
+        $params = $this->getParams($data, ["toId"]);
+        $params["fromId"] = $userId;
         $query = "DELETE FROM statAccess WHERE toId = :toId AND fromId = :fromId";
 
-        // Проверяем права доступа
-        if ($params["fromId"] != $userId) {
-            $this->sendResponse("You don't have permission to do this", 403);
-        }
-
         // Делаем запрос
-        $this->pdoQuery($query, $params);
-        $this->sendResponse(null, 204);
+        $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
+        $this->sendResponse($res);
     }
 }
 
