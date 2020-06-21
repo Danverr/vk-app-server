@@ -32,16 +32,27 @@ class API
         }
     }
 
-    protected function getSetters($params)
+    protected function getAccess($userId)
     {
-        $query = "";
+        $query = "SELECT * FROM statAccess WHERE toId = :toId";
 
-        foreach ($params as $param => $value) {
-            $query .= $param . " = :" . $param . ", ";
+        $res = $this->pdoQuery($query, ["toId" => $userId]);
+        $res = array_map(function ($row) {
+            return (int)$row["fromId"];
+        }, $res);
+
+        return $res;
+    }
+
+    protected function checkAccess($userId, $users)
+    {
+        $access = $this->getAccess($userId);
+
+        foreach ($users as $user) {
+            if ($user != $userId && array_search($user, $access) === false) {
+                $this->sendResponse("You don't have permission to do this", 403);
+            }
         }
-
-        $query = rtrim($query, ", ");
-        return $query;
     }
 
     protected function pdoQuery($query, $params = [], $options = [])
@@ -95,6 +106,8 @@ class API
         foreach ($required as $param) {
             if (!isset($data[$param])) {
                 $this->sendResponse("'$param' required parameter is not found", 400);
+            } elseif (strlen($data[$param]) == 0) {
+                $this->sendResponse("'$param' parameter is empty", 400);
             } else {
                 $res[$param] = $data[$param];
             }
@@ -102,6 +115,10 @@ class API
 
         foreach ($optional as $param) {
             if (isset($data[$param])) {
+                if (strlen($data[$param]) == 0) {
+                    $this->sendResponse("'$param' parameter is empty", 400);
+                }
+
                 $res[$param] = $data[$param];
             }
         }

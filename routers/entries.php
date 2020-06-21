@@ -1,6 +1,7 @@
 <?php
 
 include_once __DIR__ . "./../api.php";
+include_once __DIR__ . "./../utils/formatters.php";
 
 class Entries extends API
 {
@@ -23,47 +24,52 @@ class Entries extends API
         }
     }
 
-    private function getAccess($userId)
-    {
-        $query = "SELECT * FROM statAccess WHERE toId = :toId";
-
-        $res = $this->pdoQuery($query, ["toId" => $userId]);
-        $res = array_map(function ($row) {
-            return (int)$row["fromId"];
-        }, $res);
-
-        return $res;
-    }
-
     private function getEntries($data, $userId)
     {
         // Данные запроса
-        $query = "SELECT * FROM entries WHERE userId = :userId";
-        $params = $this->getParams($data, ["userId"], ["day", "month"]);
+        $data = $this->getParams($data, ["users"], ["day", "month"]);
+        $users = explode(",", $data["users"]);
+        $params = $users;
+        $query = "SELECT * FROM entries WHERE (isPublic = 1 AND userId IN " . getPlaceholders(count($params));
 
         // Проверяем права доступа
-        if ($userId != $params["userId"]) {
-            $access = $this->getAccess($userId);
-
-            if (array_search($params["userId"], $access) === false) {
-                $this->sendResponse("You don't have permission to do this", 403);
-            } else {
-                $query .= " AND isPublic = 1";
-            }
-        }
+        $this->checkAccess($userId, $params);
 
         // Модифицируем запрос
-        if (!is_null($params["day"])) {
-            $query .= " AND date >= :day AND date < DATE_ADD(:day, INTERVAL 1 DAY)";
-        } elseif (!is_null($params["month"])) {
-            $params["month"] .= "-01";
-            $query .= " AND date >= :month AND date < DATE_ADD(:month, INTERVAL 1 MONTH)";
+        if (array_search($userId, $params) !== false) {
+            $query .= " OR userId = ?";
+            $params[] = $userId;
+        }
+
+        $query .= ")";
+
+        if (!is_null($data["day"])) {
+            $query .= " AND date >= ? AND date < DATE_ADD(?, INTERVAL 1 DAY)";
+            $params[] = $data["day"];
+            $params[] = $data["day"];
+        } elseif (!is_null($data["month"])) {
+            $query .= " AND date >= ? AND date < DATE_ADD(?, INTERVAL 1 MONTH)";
+            $data["month"] .= "-01";
+            $params[] = $data["month"];
+            $params[] = $data["month"];
         }
 
         $query .= " ORDER BY date DESC";
 
-        // Делаем запрос
-        $res = $this->pdoQuery($query, $params);
+        // Делаем запрос и форматируем данные
+        $entries = $this->pdoQuery($query, $params, ["NO_COLON"]);
+        $res = [];
+
+        foreach ($users as $user) {
+            $res[$user] = [];
+        }
+
+        foreach ($entries as $entry) {
+            $id = $entry["userId"];
+            unset($entry["userId"]);
+            $res[$id][] = $entry;
+        }
+
         $this->sendResponse($res);
     }
 
@@ -99,27 +105,36 @@ class Entries extends API
     private function getStats($data, $userId)
     {
         // Данные запроса
-        $query = "SELECT entryId, mood, stress, anxiety, date FROM entries WHERE userId = :userId";
-        $params = $this->getParams($data, ["userId"], ["startDate"]);
+        $data = $this->getParams($data, ["users"], ["startDate"]);
+        $users = explode(",", $data["users"]);
+        $params = $users;
+        $query = "SELECT entryId, userId, mood, stress, anxiety, date FROM entries WHERE userId IN " . getPlaceholders(count($params));
 
         // Проверяем права доступа
-        if ($userId != $params["userId"]) {
-            $access = $this->getAccess($userId);
-
-            if (array_search($params["userId"], $access) === false) {
-                $this->sendResponse("You don't have permission to do this", 403);
-            }
-        }
+        $this->checkAccess($userId, $params);
 
         // Модифицируем запрос
-        if (!is_null($params["startDate"])) {
-            $query .= " AND date >= :startDate";
+        if (!is_null($data["startDate"])) {
+            $query .= " AND date >= ?";
+            $params[] = $data["startDate"];
         }
 
         $query .= " ORDER BY date DESC";
 
         // Делаем запрос и форматируем данные
-        $res = $this->pdoQuery($query, $params);
+        $stats = $this->pdoQuery($query, $params, ["NO_COLON"]);
+        $res = [];
+
+        foreach ($users as $user) {
+            $res[$user] = [];
+        }
+
+        foreach ($stats as $stat) {
+            $id = $stat["userId"];
+            unset($stat["userId"]);
+            $res[$id][] = $stat;
+        }
+
         $this->sendResponse($res);
     }
 
@@ -132,32 +147,32 @@ class Entries extends API
         $params = [];
         $cols = ["mood", "stress", "anxiety", "title", "note", "isPublic", "date"];
 
+        // Модифицируем запрос и проверяем данные
         if (count($csv) % count($cols) != 0) {
             $this->sendResponse("There must be " . count($cols) . " values on each row, but " . count($csv) % count($cols)  . " extra found", 400);
         }
 
         for ($i = 0; $i < count($csv); $i += count($cols)) {
-            // Модифицируем запрос
             $query .= ($i ? ", " : " ") . "(?, ";
             $params[] = $userId; // userId
 
             for ($j=0; $j < count($cols); $j++) {
                 $query .= ($j == count($cols) - 1 ? "?)" : "?, ");
+                $params[] = $csv[$i + $j];
 
-                if ($j <= 2) { // mood, stress, anxiety
-                    $params[] = (int)$csv[$i + $j];
+                if ($j <= 2 || $j == 5) { // mood, stress, anxiety OR isPublic
+                    $from = 1;
+                    $to = 5;
 
-                    if (end($params) < 1 || end($params) > 5) {
-                        $this->sendResponse($cols[$j] . " param (#" . ($j + 1) . ") must be from 1 to 5 inclusive in row " . ($i / count($cols) + 1), 400);
+                    if ($j == 5) { // isPublic
+                        $from = 0;
+                        $to = 1;
                     }
-                } elseif ($j == 5) { // isPublic
-                    $params[] = (int)$csv[$i + $j];
 
-                    if (end($params) < 0 || end($params) > 1) {
-                        $this->sendResponse($cols[$j] . " param (#" . ($j + 1) . ") must be from 0 to 1 inclusive in row " . ($i / count($cols) + 1), 400);
+                    if (!(end($params) >= $from && end($params) <= $to)) {
+                        $row = $i / count($cols) + 1;
+                        $this->sendResponse($cols[$j] . " param (#" . ($j + 1) . ") must be from $from to $to inclusive in row $row", 400);
                     }
-                } else {
-                    $params[] = $csv[$i + $j];
                 }
             }
         }
@@ -174,7 +189,7 @@ class Entries extends API
     {
         // Данные запроса
         $params = $this->getParams($data, ["entryId"], ["mood", "stress", "anxiety", "isPublic", "title", "note"]);
-        $query = "UPDATE entries SET " . $this->getSetters($params) . " WHERE entryId = :entryId";
+        $query = "UPDATE entries SET " . getSetters($params) . " WHERE entryId = :entryId";
 
         // Проверяем права доступа
         $checkQuery = "SELECT userId FROM entries WHERE entryId = :entryId";
@@ -185,17 +200,20 @@ class Entries extends API
         }
 
         // Проверяем правильность данных
-        if ($params["mood"] < 1 || $params["mood"] > 5) {
-            $this->sendResponse("'mood' param must be from 1 to 5 inclusive", 400);
-        }
-        if ($params["stress"] < 1 || $params["stress"] > 5) {
-            $this->sendResponse("'stress' param must be from 1 to 5 inclusive", 400);
-        }
-        if ($params["anxiety"] < 1 || $params["anxiety"] > 5) {
-            $this->sendResponse("'anxiety' param must be from 1 to 5 inclusive", 400);
-        }
-        if ($params["isPublic"] < 0 || $params["isPublic"] > 1) {
-            $this->sendResponse("'isPublic' param must be from 0 to 1 inclusive", 400);
+        $stats = ["mood", "stress", "anxiety", "isPublic"];
+
+        foreach ($stats as $stat) {
+            $from = 1;
+            $to = 5;
+
+            if ($stat == "isPublic") {
+                $from = 0;
+                $to = 1;
+            }
+
+            if (!is_null($params[$stat]) && !($params[$stat] >= $from && $params[$stat] <= $to)) {
+                $this->sendResponse("$stat param must be from $from to $to inclusive", 400);
+            }
         }
 
         // Делаем запрос
