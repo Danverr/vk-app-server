@@ -115,10 +115,6 @@ class API
 
         foreach ($optional as $param) {
             if (isset($data[$param])) {
-                if (strlen($data[$param]) == 0) {
-                    $this->sendResponse("'$param' parameter is empty", 400);
-                }
-
                 $res[$param] = $data[$param];
             }
         }

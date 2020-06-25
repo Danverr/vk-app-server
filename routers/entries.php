@@ -141,37 +141,31 @@ class Entries extends API
     private function createEntries($data, $userId)
     {
         // Данные запроса
-        $data = $this->getParams($data, ["csv"]);
-        $csv = str_getcsv($data["csv"]);
-        $query = "INSERT INTO entries (userId, mood, stress, anxiety, title, note, isPublic, date) VALUES";
+        $data = $this->getParams($data, ["entries"]);
+        $entries = json_decode($data["entries"], true);
+        $query = "";
         $params = [];
-        $cols = ["mood", "stress", "anxiety", "title", "note", "isPublic", "date"];
 
         // Модифицируем запрос и проверяем данные
-        if (count($csv) % count($cols) != 0) {
-            $this->sendResponse("There must be " . count($cols) . " values on each row, but " . count($csv) % count($cols)  . " extra found", 400);
-        }
+        for ($i=0; $i < count($entries); $i++) {
+            $entry = $this->getParams($entries[$i], ["mood", "stress", "anxiety"], ["title", "note", "isPublic", "date"]);
+            $entry["userId"] = $userId;
+            $query .= "INSERT INTO entries SET " . getSetters($entry, true) . ";";
 
-        for ($i = 0; $i < count($csv); $i += count($cols)) {
-            $query .= ($i ? ", " : " ") . "(?, ";
-            $params[] = $userId; // userId
+            foreach ($entry as $key => $value) {
+                $params[] = $value;
 
-            for ($j=0; $j < count($cols); $j++) {
-                $query .= ($j == count($cols) - 1 ? "?)" : "?, ");
-                $params[] = $csv[$i + $j];
-
-                if ($j <= 2 || $j == 5) { // mood, stress, anxiety OR isPublic
+                if ($key == "mood" || $key == "stress" || $key == "anxiety" || $key == "isPublic") {
                     $from = 1;
                     $to = 5;
 
-                    if ($j == 5) { // isPublic
+                    if ($key == "isPublic") {
                         $from = 0;
                         $to = 1;
                     }
 
-                    if (!(end($params) >= $from && end($params) <= $to)) {
-                        $row = $i / count($cols) + 1;
-                        $this->sendResponse($cols[$j] . " param (#" . ($j + 1) . ") must be from $from to $to inclusive in row $row", 400);
+                    if (!($value >= $from && $value <= $to)) {
+                        $this->sendResponse("$key param must be from $from to $to inclusive in #" . ($i + 1) . " entry", 400);
                     }
                 }
             }
@@ -179,10 +173,7 @@ class Entries extends API
 
         // Делаем запрос
         $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT", "NO_COLON"]);
-        $this->sendResponse([
-          "rowsAdded" => $res,
-          "lastId" => $this->DBH->lastInsertId(),
-        ], 201);
+        $this->sendResponse($this->DBH->lastInsertId(), 201);
     }
 
     private function updateEntry($data, $userId)

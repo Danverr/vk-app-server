@@ -1,11 +1,11 @@
 <?php
 
-function getSetters($params)
+function getSetters($params, $isUnnamed = false)
 {
     $query = "";
 
     foreach ($params as $param => $value) {
-        $query .= $param . " = :" . $param . ", ";
+        $query .= $param . " = " . ($isUnnamed ? "?" : ":" . $param) . ", ";
     }
 
     $query = rtrim($query, ", ");
