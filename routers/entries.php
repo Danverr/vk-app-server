@@ -9,8 +9,6 @@ class Entries extends API
     {
         if ($method == 'GET' && count($url) == 0) {
             $this->getEntries($data, $userId);
-        } elseif ($method == 'GET' && count($url) == 1 && $url[0] == "all") {
-            $this->getAllEntries($data, $userId);
         } elseif ($method == 'GET' && count($url) == 1 && $url[0] == "stats") {
             $this->getStats($data, $userId);
         } elseif ($method == 'POST' && count($url) == 0) {
@@ -26,92 +24,68 @@ class Entries extends API
 
     private function getEntries($data, $userId)
     {
-        // Данные запроса
-        $data = $this->getParams($data, ["users"], ["day", "month"]);
-        $users = explode(",", $data["users"]);
-        $params = $users;
-        $query = "SELECT * FROM entries WHERE (isPublic = 1 AND userId IN " . getPlaceholders(count($params));
+        $data = $this->getParams($data, [], ["users", "day", "month", "skip", "count"]);
+        $data["users"] = $this->getUsers($userId, $data["users"]);
+        $params = [];
 
-        // Проверяем права доступа
-        $this->checkAccess($userId, $params);
+        // Формируем перечень юзеров, записи которых нам нужны
+        $matchUsers = "";
 
-        // Модифицируем запрос
-        if (array_search($userId, $params) !== false) {
-            $query .= " OR userId = ?";
-            $params[] = $userId;
+        if (count($data["users"])) {
+            $matchUsers .= "userId IN (" . getPlaceholders(count($data["users"])) . ") AND isPublic = 1";
+            $params = array_merge($params, $data["users"]);
+
+            if (array_search($userId, $data["users"]) !== false) {
+                $matchUsers .= " OR userId = ?";
+                $params[] = $userId;
+            }
+
+            $matchUsers = "($matchUsers)";
         }
 
-        $query .= ")";
+        // Определяем временной промежуток
+        $timeInterval = "";
 
         if (!is_null($data["day"])) {
-            $query .= " AND date >= ? AND date < DATE_ADD(?, INTERVAL 1 DAY)";
+            $timeInterval .= "AND date >= ? AND date < DATE_ADD(?, INTERVAL 1 DAY)";
             $params[] = $data["day"];
             $params[] = $data["day"];
         } elseif (!is_null($data["month"])) {
-            $query .= " AND date >= ? AND date < DATE_ADD(?, INTERVAL 1 MONTH)";
+            $timeInterval .= "AND date >= ? AND date < DATE_ADD(?, INTERVAL 1 MONTH)";
             $data["month"] .= "-01";
             $params[] = $data["month"];
             $params[] = $data["month"];
         }
 
-        $query .= " ORDER BY date DESC";
+        // Определяем лимит записей и сдвиг
+        $limit = !is_null($data["count"]) ? ("LIMIT " . (int)$data["count"]) : "";
+        $offset = !is_null($data["skip"]) ? ("OFFSET " . (int)$data["skip"]) : "";
 
-        // Делаем запрос и форматируем данные
-        $entries = $this->pdoQuery($query, $params, ["NO_COLON"]);
-        $res = [];
-
-        foreach ($users as $user) {
-            $res[$user] = [];
+        if ($offset != "" && $limit == "") {
+            $this->sendResponse("You cant use 'skip' param without 'count'");
         }
 
-        foreach ($entries as $entry) {
-            $id = $entry["userId"];
-            unset($entry["userId"]);
-            $res[$id][] = $entry;
-        }
+        // Порядок записей
+        $order = "ORDER BY date DESC, entryId ASC";
 
-        $this->sendResponse($res);
-    }
-
-    private function getAllEntries($data, $userId)
-    {
-        // Формируем список юзеров к которым есть доступ
-        $access = $this->getAccess($userId);
-
-        // Данные запроса
-        $matchUsers = count($access) ? "OR (userId IN (" . implode(", ", $access) . ") AND isPublic = 1)" : "";
-        $subQuery = "SELECT entryId FROM entries WHERE userId = :userId $matchUsers ORDER BY date DESC, entryId LIMIT :skip, :count";
-        $query = "SELECT * FROM ($subQuery) ids INNER JOIN entries using(entryId) ORDER BY date DESC, entryId";
-        $params = $this->getParams($data, ["skip", "count"]);
+        // Формируем запросы
+        $subQuery = "SELECT entryId FROM entries WHERE $matchUsers $timeInterval $order $limit $offset";
+        $query = "SELECT * FROM ($subQuery) ids INNER JOIN entries using(entryId) $order";
 
         // Делаем запрос
-        $STH = $this->DBH->prepare($query);
-        $STH->setFetchMode(PDO::FETCH_ASSOC);
-
-        $STH->bindValue(':skip', $params["skip"], PDO::PARAM_INT);
-        $STH->bindValue(':count', $params["count"], PDO::PARAM_INT);
-        $STH->bindValue(':userId', $userId);
-
-        try {
-            $STH->execute();
-        } catch (Exception $e) {
-            $this->sendResponse($e->getMessage(), 400);
-        }
-
-        $res = $STH->fetchAll();
+        $res = $this->pdoQuery($query, $params, ["NO_COLON"]);
         $this->sendResponse($res);
     }
 
     private function getStats($data, $userId)
     {
         // Данные запроса
-        $data = $this->getParams($data, ["users"], ["startDate"]);
-        $users = explode(",", $data["users"]);
-        $params = $users;
-        $query = "SELECT entryId, userId, mood, stress, anxiety, date FROM entries WHERE userId IN " . getPlaceholders(count($params));
+        $data = $this->getParams($data, [], ["users", "startDate"]);
+        $data["users"] = $this->getUsers($userId, $data["users"]);
+        $params = $data["users"];
 
-        // Проверяем права доступа
-        $this->checkAccess($userId, $params);
+        $order = "ORDER BY date DESC";
+        $query = "SELECT entryId, userId, mood, stress, anxiety, date FROM entries WHERE userId IN (" . getPlaceholders(count($params)) . ")";
 
         // Модифицируем запрос
         if (!is_null($data["startDate"])) {
@@ -125,7 +99,7 @@ class Entries extends API
         $stats = $this->pdoQuery($query, $params, ["NO_COLON"]);
         $res = [];
 
-        foreach ($users as $user) {
+        foreach ($data["users"] as $user) {
             $res[$user] = [];
         }
 
@@ -136,6 +110,40 @@ class Entries extends API
         }
 
         $this->sendResponse($res);
+    }
+
+    private function formatEntry($entry)
+    {
+        $params = ["entryId", "userId", "mood", "stress", "anxiety", "title", "note", "isPublic", "date"];
+        $newEntry = [];
+
+        foreach ($entry as $key => $value) {
+            if ($key == "mood" || $key == "stress" || $key == "anxiety" || $key == "isPublic") {
+                $mn = 1;
+                $mx = 5;
+
+                if ($key == "isPublic") {
+                    $mn = 0;
+                    $mx = 1;
+                }
+
+                $value = max($value, $mn);
+                $value = min($value, $mx);
+            } elseif ($key == "date") {
+                $now = new DateTime("now", new DateTimeZone("UTC"));
+                $date = new DateTime($value, new DateTimeZone("UTC"));
+
+                if ($date > $now) {
+                    $value = $now->format('Y-m-d H:i:s');
+                }
+            }
+
+            if (array_search($key, $params) !== false) {
+                $newEntry[$key] = $value;
+            }
+        }
+
+        return $newEntry;
     }
 
     private function createEntries($data, $userId)
@@ -150,25 +158,13 @@ class Entries extends API
         for ($i=0; $i < count($entries); $i++) {
             $entry = $this->getParams($entries[$i], ["mood", "stress", "anxiety"], ["title", "note", "isPublic", "date"]);
             $entry["userId"] = $userId;
-            $query .= "INSERT INTO entries SET " . getSetters($entry, true) . ";";
+            $entry = $this->formatEntry($entry);
 
             foreach ($entry as $key => $value) {
                 $params[] = $value;
-
-                if ($key == "mood" || $key == "stress" || $key == "anxiety" || $key == "isPublic") {
-                    $from = 1;
-                    $to = 5;
-
-                    if ($key == "isPublic") {
-                        $from = 0;
-                        $to = 1;
-                    }
-
-                    if (!($value >= $from && $value <= $to)) {
-                        $this->sendResponse("$key param must be from $from to $to inclusive in #" . ($i + 1) . " entry", 400);
-                    }
-                }
             }
+
+            $query .= "INSERT INTO entries SET " . getSetters($entry, true) . ";";
         }
 
         // Делаем запрос
@@ -180,6 +176,8 @@ class Entries extends API
     {
         // Данные запроса
         $params = $this->getParams($data, ["entryId"], ["mood", "stress", "anxiety", "isPublic", "title", "note"]);
+        $params = $this->formatEntry($params);
+
         $query = "UPDATE entries SET " . getSetters($params) . " WHERE entryId = :entryId";
 
         // Проверяем права доступа
@@ -188,23 +186,6 @@ class Entries extends API
 
         if (count($res) && $res[0]["userId"] != $userId) {
             $this->sendResponse("You don't have permission to do this", 403);
-        }
-
-        // Проверяем правильность данных
-        $stats = ["mood", "stress", "anxiety", "isPublic"];
-
-        foreach ($stats as $stat) {
-            $from = 1;
-            $to = 5;
-
-            if ($stat == "isPublic") {
-                $from = 0;
-                $to = 1;
-            }
-
-            if (!is_null($params[$stat]) && !($params[$stat] >= $from && $params[$stat] <= $to)) {
-                $this->sendResponse("$stat param must be from $from to $to inclusive", 400);
-            }
         }
 
         // Делаем запрос

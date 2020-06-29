@@ -47,12 +47,24 @@ class API
     protected function checkAccess($userId, $users)
     {
         $access = $this->getAccess($userId);
+        $access[] = $userId;
 
-        foreach ($users as $user) {
-            if ($user != $userId && array_search($user, $access) === false) {
-                $this->sendResponse("You don't have permission to do this", 403);
-            }
+        if (array_intersect($users, $access) != $users) {
+            $this->sendResponse("You don't have permission to do this", 403);
         }
+    }
+
+    protected function getUsers($userId, $users)
+    {
+        if (is_null($users)) { // Формируем список юзеров к которым есть доступ
+            $users = $this->getAccess($userId);
+            $users[] = $userId;
+        } else { // Если параметр не пустой, проверяем доступ к тем, что указаны
+            $users = explode(",", $users);
+            $this->checkAccess($userId, $users);
+        }
+
+        return $users;
     }
 
     protected function pdoQuery($query, $params = [], $options = [])

@@ -17,6 +17,6 @@ function getPlaceholders($count)
     if ($count == 0) {
         return "";
     } else {
-        return "(" . str_repeat('?, ', $count - 1) . "?)";
+        return str_repeat('?, ', $count - 1) . "?";
     }
 }
