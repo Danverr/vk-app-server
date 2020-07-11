@@ -97,7 +97,7 @@ class API
     {
         http_response_code($code);
 
-        if ($responce != null && $code >= 400) {
+        if ($responce != null && $code >= 300) {
             $title = $code . " " . self::HTTP_CODE_NAMES[strval($code)];
 
             if (!is_null($responce)) {
@@ -108,6 +108,11 @@ class API
         }
 
         echo json_encode($responce, JSON_NUMERIC_CHECK);
+
+        if ($code >= 300) {
+            throw new Exception($responce);
+        }
+
         exit(0);
     }
 

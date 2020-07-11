@@ -32,7 +32,7 @@ class Entries extends API
         $matchUsers = "";
 
         if (count($data["users"])) {
-            $matchUsers .= "userId IN (" . getPlaceholders(count($data["users"])) . ") AND isPublic = 1";
+            $matchUsers .= "userId IN " . getPlaceholders(count($data["users"])) . " AND isPublic = 1";
             $params = array_merge($params, $data["users"]);
 
             if (array_search($userId, $data["users"]) !== false) {
@@ -85,7 +85,7 @@ class Entries extends API
         $params = $data["users"];
 
         $order = "ORDER BY date DESC";
-        $query = "SELECT entryId, userId, mood, stress, anxiety, date FROM entries WHERE userId IN (" . getPlaceholders(count($params)) . ")";
+        $query = "SELECT entryId, userId, mood, stress, anxiety, date FROM entries WHERE userId IN " . getPlaceholders(count($params));
 
         // Модифицируем запрос
         if (!is_null($data["startDate"])) {

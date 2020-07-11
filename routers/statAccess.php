@@ -47,12 +47,25 @@ class StatAccess extends API
     private function createUserPair($data, $userId)
     {
         // Данные запроса
-        $params = $this->getParams($data, ["toId"]);
-        $params["fromId"] = $userId;
-        $query = "INSERT INTO statAccess SET " . getSetters($params);
+        $friends = $this->getParams($data, ["toId"]);
+        $friends = explode(",", $friends["toId"]);
+        $query = "INSERT INTO statAccess (fromId, toId) VALUES ";
+        $params = [];
+
+        foreach ($friends as $friend) {
+            if ($friend == $userId) {
+                $this->sendResponse("You cant add access to yourself", 400);
+            }
+
+            $query .= "(?, ?), ";
+            $params[] = $userId;
+            $params[] = $friend;
+        }
+
+        $query = rtrim($query, ", ");
 
         // Делаем запрос
-        $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
+        $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT", "NO_COLON"]);
         $this->sendResponse($res, 201);
     }
 
@@ -60,11 +73,12 @@ class StatAccess extends API
     {
         // Данные запроса
         $params = $this->getParams($data, ["toId"]);
-        $params["fromId"] = $userId;
-        $query = "DELETE FROM statAccess WHERE toId = :toId AND fromId = :fromId";
+        $params = explode(",", $params["toId"]);
+        $query = "DELETE FROM statAccess WHERE fromId = ? AND toId IN " . getPlaceholders(count($params));
+        array_unshift($params, $userId);
 
         // Делаем запрос
-        $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
+        $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT", "NO_COLON"]);
         $this->sendResponse($res);
     }
 }

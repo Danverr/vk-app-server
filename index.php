@@ -2,6 +2,7 @@
 
 include_once './api.php';
 include_once './utils/getQueryData.php';
+include_once './utils/logError.php';
 
 error_reporting(E_ERROR | E_PARSE);
 
@@ -46,4 +47,8 @@ if (!include_once 'routers/' . $table . '.php') {
     $api->sendResponse("Invalid table name", 404);
 }
 
-$router->route($method, $url, $data, $userId);
+try {
+    $router->route($method, $url, $data, $userId);
+} catch (Exception $error) {
+    logError($error, $userId);
+}
