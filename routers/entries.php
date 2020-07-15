@@ -24,7 +24,7 @@ class Entries extends API
 
     private function getEntries($data, $userId)
     {
-        $data = $this->getParams($data, [], ["users", "day", "month", "skip", "count"]);
+        $data = $this->getParams($data, [], ["users", "day", "month", "lastId", "count"]);
         $data["users"] = $this->getUsers($userId, $data["users"]);
         $params = [];
 
@@ -57,19 +57,22 @@ class Entries extends API
             $params[] = $data["month"];
         }
 
-        // Определяем лимит записей и сдвиг
-        $limit = !is_null($data["count"]) ? ("LIMIT " . (int)$data["count"]) : "";
-        $offset = !is_null($data["skip"]) ? ("OFFSET " . (int)$data["skip"]) : "";
+        // После какого ID брать записи
+        $lastId = "";
 
-        if ($offset != "" && $limit == "") {
-            $this->sendResponse("You cant use 'skip' param without 'count'");
+        if (!is_null($data["lastId"])) {
+            $lastId = "AND entryId < ?";
+            $params[] = $data["lastId"];
         }
 
+        // Определяем кол-во записей
+        $limit = !is_null($data["count"]) ? ("LIMIT " . (int)$data["count"]) : "";
+
         // Порядок записей
-        $order = "ORDER BY date DESC, entryId ASC";
+        $order = "ORDER BY entryId DESC";
 
         // Формируем запросы
-        $subQuery = "SELECT entryId FROM entries WHERE $matchUsers $timeInterval $order $limit $offset";
+        $subQuery = "SELECT entryId FROM entries WHERE $matchUsers $timeInterval $lastId $order $limit";
         $query = "SELECT * FROM ($subQuery) ids INNER JOIN entries using(entryId) $order";
 
         // Делаем запрос

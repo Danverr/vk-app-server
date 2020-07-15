@@ -5,6 +5,7 @@ include_once './utils/getQueryData.php';
 include_once './utils/logError.php';
 
 error_reporting(E_ERROR | E_PARSE);
+ini_set('display_errors', 0);
 
 // Заголовки для CORS
 header("Access-Control-Allow-Origin: *");
@@ -36,18 +37,18 @@ $url = explode('/', $url);
 $table = $url[0];
 $url = array_slice($url, 1);
 
-// Проверяем подпись и в случае неудачи формируем ответ
-$userId = $api->checkSign($_SERVER['HTTP_X_VK_SIGN']);
-if (is_null($userId)) {
-    $api->sendResponse("Wrong VK Sign", 401);
-}
-
-// Подключаем роутер и запускаем главную функцию
-if (!include_once 'routers/' . $table . '.php') {
-    $api->sendResponse("Invalid table name", 404);
-}
-
 try {
+    // Проверяем подпись и в случае неудачи формируем ответ
+    $userId = $api->checkSign($_SERVER['HTTP_X_VK_SIGN']);
+    if (is_null($userId)) {
+        $api->sendResponse("Wrong VK Sign", 401);
+    }
+
+    // Подключаем роутер и запускаем главную функцию
+    if (!include_once 'routers/' . $table . '.php') {
+        $api->sendResponse("Invalid table name", 404);
+    }
+
     $router->route($method, $url, $data, $userId);
 } catch (Exception $error) {
     logError($error, $userId);
