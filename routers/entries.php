@@ -2,6 +2,7 @@
 
 include_once __DIR__ . "./../api.php";
 include_once __DIR__ . "./../utils/formatters.php";
+include_once __DIR__ . "./../utils/notificationSender.php";
 
 class Entries extends API
 {
@@ -134,7 +135,12 @@ class Entries extends API
                 $value = min($value, $mx);
             } elseif ($key == "date") {
                 $now = new DateTime("now", new DateTimeZone("UTC"));
-                $date = new DateTime($value, new DateTimeZone("UTC"));
+
+                try {
+                    $date = new DateTime($value, new DateTimeZone("UTC"));
+                } catch (Exception $error) {
+                    $this->sendResponse("Incorrect date", 400);
+                }
 
                 if ($date > $now) {
                     $value = $now->format('Y-m-d H:i:s');
@@ -149,6 +155,48 @@ class Entries extends API
         return $newEntry;
     }
 
+    private function isLowHealthEntry($entry)
+    {
+        $LIMIT = 2;
+        $time = new DateTime("now", new DateTimeZone("UTC"));
+        $time->sub(new DateInterval('P2D'));
+        $time->setTime(0, 0, 0);
+
+        $date = new DateTime($entry["date"], new DateTimeZone("UTC"));
+
+        $mn = 5;
+        $mn = min($mn, $entry["mood"]);
+        $mn = min($mn, 6 - $entry["anxiety"]);
+        $mn = min($mn, 6 - $entry["stress"]);
+
+        return $date >= $time && $mn <= $LIMIT;
+    }
+
+    private function sendLowHealthNotif($userId)
+    {
+        $url = "https://api.vk.com/method/users.get?v=5.120&lang=ru";
+        $url .= "&user_ids=" . $userId;
+        $url .= "&name_case=gen";
+        $url .= "&access_token=" . self::ACCESS_TOKEN;
+
+        $userData = file_get_contents($url);
+        $userData = json_decode($userData, true)["response"][0];
+        $userName = $userData["first_name"] . " " . $userData["last_name"];
+
+        $message = "Кажется, у $userName сейчас не лучшие дни. Поддержи друга в трудную минуту!";
+
+        $subQuery = "SELECT toId FROM statAccess WHERE fromId=$userId";
+        $query = "SELECT userId FROM ($subQuery) ids INNER JOIN statNotifications notif ON notif.userId = ids.toId";
+
+        $users = $this->pdoQuery($query);
+        $users = array_map(function ($row) {
+            return $row["userId"];
+        }, $users);
+
+        $sender = new NotificationSender();
+        $sender->send($users, $message);
+    }
+
     private function createEntries($data, $userId)
     {
         // Данные запроса
@@ -156,6 +204,7 @@ class Entries extends API
         $entries = json_decode($data["entries"], true);
         $query = "";
         $params = [];
+        $shouldSendNotif = false;
 
         // Модифицируем запрос и проверяем данные
         for ($i=0; $i < count($entries); $i++) {
@@ -163,11 +212,20 @@ class Entries extends API
             $entry["userId"] = $userId;
             $entry = $this->formatEntry($entry);
 
+            if ($this->isLowHealthEntry($entry)) {
+                $shouldSendNotif = true;
+            }
+
             foreach ($entry as $key => $value) {
                 $params[] = $value;
             }
 
             $query .= "INSERT INTO entries SET " . getSetters($entry, true) . ";";
+        }
+
+        // Отправляем уведомление о низком здоровье
+        if ($shouldSendNotif) {
+            $this->sendLowHealthNotif($userId);
         }
 
         // Делаем запрос
@@ -178,22 +236,39 @@ class Entries extends API
     private function updateEntry($data, $userId)
     {
         // Данные запроса
-        $params = $this->getParams($data, ["entryId"], ["mood", "stress", "anxiety", "isPublic", "title", "note"]);
+        $optionalParamsName = ["mood", "stress", "anxiety", "isPublic", "title", "note"];
+        $params = $this->getParams($data, ["entryId"], $optionalParamsName);
         $params = $this->formatEntry($params);
 
         $query = "UPDATE entries SET " . getSetters($params) . " WHERE entryId = :entryId";
 
         // Проверяем права доступа
-        $checkQuery = "SELECT userId FROM entries WHERE entryId = :entryId";
-        $res = $this->pdoQuery($checkQuery, ["entryId" => $params["entryId"]]);
+        $checkQuery = "SELECT * FROM entries WHERE entryId = :entryId";
+        $entry = $this->pdoQuery($checkQuery, ["entryId" => $params["entryId"]]);
 
-        if (count($res) && $res[0]["userId"] != $userId) {
+        if (count($entry) == 0) {
+            $this->sendResponse("No such entry with entryId = " . $params["entryId"], 400);
+        } else {
+            $entry = $entry[0];
+        }
+
+        if ($entry["userId"] != $userId) {
             $this->sendResponse("You don't have permission to do this", 403);
+        }
+
+        foreach ($optionalParamsName as $param) {
+            if (!is_null($params[$param])) {
+                $entry[$param] = $params[$param];
+            }
+        }
+
+        if ($this->isLowHealthEntry($entry)) {
+            $this->sendLowHealthNotif($userId);
         }
 
         // Делаем запрос
         $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
-        $this->sendResponse($res);
+        $this->sendResponse(null, 204);
     }
 
     private function deleteEntry($data, $userId)
@@ -212,7 +287,7 @@ class Entries extends API
 
         // Делаем запрос
         $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
-        $this->sendResponse($res);
+        $this->sendResponse(null, 204);
     }
 }
 

@@ -2,11 +2,10 @@
 
 function logError($error, $userId)
 {
-    $LOG_PATH = __DIR__ . "/../logs/all.log";
+    $LOG_PATH = __DIR__ . "/../logs/routers.log";
     $file = fopen($LOG_PATH, 'a');
 
-    $text .= "\n";
-    $text .= "[" . date(DateTime::RFC1123) . "]\n";
+    $text = "\n[" . date(DateTime::RFC1123) . "]\n";
     $text .= "IP: " . $_SERVER["REMOTE_ADDR"] . "\n";
     $text .= "VK ID: " . $userId . "\n";
     $text .= "User agent: " . $_SERVER["HTTP_USER_AGENT"] . "\n";

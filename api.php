@@ -4,6 +4,8 @@ class API
 {
     protected const CLIENT_SECRET = 'vrikjcw4PJpIvKWswil8';
     protected const ACCESS_TOKEN = '174b0977174b0977174b09772a173a41301174b174b097749d406ac389fd14cd082862a';
+    protected const APP_ID = "7424071";
+
     private const HTTP_CODE_NAMES = [
       "200" => "OK", // Ответ на успешные GET, PUT, PATCH или DELETE. Этот код также используется для POST, который не приводит к созданию.
       "201" => "Created", // Этот код состояния является ответом на POST, который приводит к созданию.
@@ -67,7 +69,7 @@ class API
         return $users;
     }
 
-    protected function pdoQuery($query, $params = [], $options = [])
+    public function pdoQuery($query, $params = [], $options = [])
     {
         $NO_COLON = array_search("NO_COLON", $options) !== false;
         $RETURN_ROW_COUNT = array_search("RETURN_ROW_COUNT", $options) !== false;
@@ -97,17 +99,19 @@ class API
     {
         http_response_code($code);
 
-        if ($responce != null && $code >= 300) {
-            $title = $code . " " . self::HTTP_CODE_NAMES[strval($code)];
+        if ($responce !== null) {
+            if ($code >= 300) {
+                $title = $code . " " . self::HTTP_CODE_NAMES[strval($code)];
 
-            if (!is_null($responce)) {
-                $title .= ": ";
+                if (!is_null($responce)) {
+                    $title .= ": ";
+                }
+
+                $responce = $title . $responce;
             }
 
-            $responce = $title . $responce;
+            echo json_encode($responce, JSON_NUMERIC_CHECK);
         }
-
-        echo json_encode($responce, JSON_NUMERIC_CHECK);
 
         if ($code >= 300) {
             throw new Exception($responce);
@@ -170,5 +174,3 @@ class API
         return $status ? $sign_params["vk_user_id"] : null;
     }
 }
-
-$api = new API();

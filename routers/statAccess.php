@@ -9,11 +9,9 @@ class StatAccess extends API
     {
         if ($method == 'GET' && count($url) == 0) {
             $this->getUserPairs($data, $userId);
-        }
-        if ($method == 'POST' && count($url) == 0) {
+        } elseif ($method == 'POST' && count($url) == 0) {
             $this->createUserPair($data, $userId);
-        }
-        if ($method == 'DELETE' && count($url) == 0) {
+        } elseif ($method == 'DELETE' && count($url) == 0) {
             $this->deleteUserPair($data, $userId);
         } else {
             $this->sendResponse("No such method in 'statAccess' table", 400);
@@ -79,7 +77,7 @@ class StatAccess extends API
 
         // Делаем запрос
         $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT", "NO_COLON"]);
-        $this->sendResponse($res);
+        $this->sendResponse(null, 204);
     }
 }
 
