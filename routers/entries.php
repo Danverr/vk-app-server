@@ -25,7 +25,7 @@ class Entries extends API
 
     private function getEntries($data, $userId)
     {
-        $data = $this->getParams($data, [], ["users", "day", "month", "lastId", "count"]);
+        $data = $this->getParams($data, [], ["users", "day", "month", "lastId", "lastDate","count"]);
         $data["users"] = $this->getUsers($userId, $data["users"]);
         $params = [];
 
@@ -66,14 +66,22 @@ class Entries extends API
             $params[] = $data["lastId"];
         }
 
+        // После какой даты брать записи
+        $lastDate = "";
+
+        if (!is_null($data["lastDate"])) {
+            $lastDate = "AND date < ?";
+            $params[] = $data["lastDate"];
+        }
+
         // Определяем кол-во записей
         $limit = !is_null($data["count"]) ? ("LIMIT " . (int)$data["count"]) : "";
 
         // Порядок записей
-        $order = "ORDER BY entryId DESC";
+        $order = "ORDER BY date DESC, entryId ASC";
 
         // Формируем запросы
-        $subQuery = "SELECT entryId FROM entries WHERE $matchUsers $timeInterval $lastId $order $limit";
+        $subQuery = "SELECT entryId FROM entries WHERE $matchUsers $timeInterval $lastId $lastDate $order $limit";
         $query = "SELECT * FROM ($subQuery) ids INNER JOIN entries using(entryId) $order";
 
         // Делаем запрос
