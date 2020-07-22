@@ -33,10 +33,15 @@ class StatAccess extends API
             $this->sendResponse("'type' property must equal only 'toId' or 'fromId'", 400);
         }
 
+        $query .= " ORDER BY date DESC";
+
         // Делаем запрос
         $res = $this->pdoQuery($query, $params);
         $res = array_map(function ($row) use ($data) {
-            return $row[$data["type"]];
+            return [
+              "id" => $row[$data["type"]],
+              "date" => $row["date"],
+            ];
         }, $res);
 
         $this->sendResponse($res);
@@ -55,7 +60,7 @@ class StatAccess extends API
                 $this->sendResponse("You cant add access to yourself", 400);
             }
 
-            $query .= "(?, ?), ";
+            $query .= getPlaceholders(2) . ", ";
             $params[] = $userId;
             $params[] = $friend;
         }
