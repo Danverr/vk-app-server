@@ -4,7 +4,7 @@ include_once './api.php';
 include_once './utils/getQueryData.php';
 include_once './utils/logError.php';
 
-error_reporting(E_ERROR | E_PARSE);
+error_reporting(E_ALL);
 ini_set('display_errors', 0);
 
 // Заголовки для CORS

@@ -18,10 +18,10 @@ class API
       "500" => "Internal Server Error" // Любая внутренняя ошибка сервера, которая не входит в рамки остальных ошибок класса
     ];
 
-    private const HOST = "remotemysql.com";
-    private const USERNAME = "4xv3ZUe5kc";
-    private const PASSWORD = "ooRAVaHThw";
-    private const DATABASE = "4xv3ZUe5kc";
+    private const HOST = "127.0.0.1:3306";
+    private const USERNAME = "root";
+    private const PASSWORD = "";
+    private const DATABASE = "vkapp-mood";
     protected $DBH;
 
     public function __construct()

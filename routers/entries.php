@@ -33,15 +33,8 @@ class Entries extends API
         $matchUsers = "";
 
         if (count($data["users"])) {
-            $matchUsers .= "userId IN " . getPlaceholders(count($data["users"])) . " AND isPublic = 1";
+            $matchUsers = "(userId IN " . getPlaceholders(count($data["users"])) . ")";
             $params = array_merge($params, $data["users"]);
-
-            if (array_search($userId, $data["users"]) !== false) {
-                $matchUsers .= " OR userId = ?";
-                $params[] = $userId;
-            }
-
-            $matchUsers = "($matchUsers)";
         }
 
         // Определяем временной промежуток
@@ -86,6 +79,15 @@ class Entries extends API
 
         // Делаем запрос
         $res = $this->pdoQuery($query, $params, ["NO_COLON"]);
+
+        // Форматируем данные
+        for ($i = 0; $i < count($res); $i++) {
+            if ($res[$i]["isPublic"] == 0 && $res[$i]["userId"] != $userId) {
+                $res[$i]["title"] = "";
+                $res[$i]["note"] = "";
+            }
+        }
+
         $this->sendResponse($res);
     }
 
