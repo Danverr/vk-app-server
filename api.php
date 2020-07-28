@@ -1,5 +1,8 @@
 <?php
 
+include_once __DIR__ . "./utils/formatters.php";
+include_once __DIR__ . "./utils/notificationSender.php";
+
 class API
 {
     protected const CLIENT_SECRET = 'vrikjcw4PJpIvKWswil8';

@@ -1,8 +1,6 @@
 <?php
 
 include_once __DIR__ . "./../api.php";
-include_once __DIR__ . "./../utils/formatters.php";
-include_once __DIR__ . "./../utils/notificationSender.php";
 
 class Entries extends API
 {
@@ -91,41 +89,6 @@ class Entries extends API
         $this->sendResponse($res);
     }
 
-    private function getStats($data, $userId)
-    {
-        // Данные запроса
-        $data = $this->getParams($data, [], ["users", "startDate"]);
-        $data["users"] = $this->getUsers($userId, $data["users"]);
-        $params = $data["users"];
-
-        $order = "ORDER BY date DESC";
-        $query = "SELECT entryId, userId, mood, stress, anxiety, date FROM entries WHERE userId IN " . getPlaceholders(count($params));
-
-        // Модифицируем запрос
-        if (!is_null($data["startDate"])) {
-            $query .= " AND date >= ?";
-            $params[] = $data["startDate"];
-        }
-
-        $query .= " ORDER BY date DESC";
-
-        // Делаем запрос и форматируем данные
-        $stats = $this->pdoQuery($query, $params, ["NO_COLON"]);
-        $res = [];
-
-        foreach ($data["users"] as $user) {
-            $res[$user] = [];
-        }
-
-        foreach ($stats as $stat) {
-            $id = $stat["userId"];
-            unset($stat["userId"]);
-            $res[$id][] = $stat;
-        }
-
-        $this->sendResponse($res);
-    }
-
     private function formatEntry($entry)
     {
         $params = ["entryId", "userId", "mood", "stress", "anxiety", "title", "note", "isPublic", "date"];
@@ -195,8 +158,9 @@ class Entries extends API
 
         $message = "Кажется, у $userName сейчас не лучшие дни. Поддержи друга в трудную минуту!";
 
-        $subQuery = "SELECT toId FROM statAccess WHERE fromId=$userId";
-        $query = "SELECT userId FROM ($subQuery) ids INNER JOIN statNotifications notif ON notif.userId = ids.toId";
+        $subQuery1 = "SELECT toId FROM statAccess WHERE fromId=$userId";
+        $subQuery2 = "SELECT userId FROM notifications WHERE lowStats=1";
+        $query = "SELECT userId FROM ($subQuery1) ids INNER JOIN ($subQuery2) notif ON notif.userId = ids.toId";
 
         $users = $this->pdoQuery($query);
         $users = array_map(function ($row) {

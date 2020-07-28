@@ -1,6 +1,5 @@
 <?php
 
-include_once __DIR__ . "/notificationSender.php";
 include_once __DIR__ . "/../api.php";
 
 $MESSAGE = "Как прошел твой день? Сделай об этом запись в дневнике!";
@@ -10,7 +9,7 @@ $api = new API();
 $time = new DateTime("now", new DateTimeZone("UTC"));
 $time = $time->format("H:i:00");
 
-$query = "SELECT userId FROM entryNotifications WHERE time='$time'";
+$query = "SELECT userId FROM notifications WHERE time='$time'";
 
 $users = $api->pdoQuery($query);
 $users = array_map(function ($row) {
@@ -19,4 +18,3 @@ $users = array_map(function ($row) {
 
 $sender = new NotificationSender();
 $res = $sender->send($users, $MESSAGE);
-$sender->log($res, $MESSAGE);

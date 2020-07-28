@@ -28,7 +28,7 @@ class NotificationSender extends API
             $response = array_merge($response, $curResponse);
         }
 
-        return $response;
+        $this->log($response, $message);
     }
 
     public function log($response, $message)
@@ -39,28 +39,35 @@ class NotificationSender extends API
         $total = count($response);
         $success = 0;
         $errors = [];
+        $haveErrors = false;
 
         foreach ($response as $res) {
             if ($res["status"]) {
                 $success++;
             } else {
-                $errors[$res["error"]["code"]]++;
+                $haveErrors = true;
+                $errors[$res["error"]["code"]][] = $res["user_id"];
             }
         }
 
-        $text = "\n[" . date(DateTime::RFC1123) . "]\n";
-        $text .= "Notifications sent: $total\n";
-        $text .= "Message: $message\n";
+        if ($haveErrors) {
+            $text = "\n[" . date(DateTime::RFC1123) . "]\n";
+            $text .= "Notifications sent: $total\n";
+            $text .= "Message: $message\n";
 
-        if ($total > 0) {
-            $text .= "Successfully: $success, ≈" . round($success * 100 / $total) . "%\n";
+            if ($total > 0) {
+                $text .= "Successfully: $success, ≈" . round($success * 100 / $total) . "%\n";
 
-            foreach ($errors as $code => $count) {
-                $text .= "Failed with code №$code: $count, ≈" . round($count * 100 / $total) . "%\n";
+                foreach ($errors as $code => $users) {
+                    $count = count($users);
+                    $text .= "Failed with code №$code: $count, ≈" . round($count * 100 / $total) . "%\n";
+                    $text .= "Code №$code users: " . implode(", ", $users);
+                }
             }
+
+            fwrite($file, $text);
         }
 
-        fwrite($file, $text);
         fclose($file);
     }
 }
