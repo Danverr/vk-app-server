@@ -9,7 +9,7 @@ $api = new API();
 $time = new DateTime("now", new DateTimeZone("UTC"));
 $time = $time->format("H:i:00");
 
-$query = "SELECT userId FROM notifications WHERE time='$time'";
+$query = "SELECT userId FROM notifications WHERE createEntry='$time'";
 
 $users = $api->pdoQuery($query);
 $users = array_map(function ($row) {

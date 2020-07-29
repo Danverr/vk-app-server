@@ -5,11 +5,11 @@ include_once __DIR__ . "./utils/notificationSender.php";
 
 class API
 {
-    protected const CLIENT_SECRET = 'vrikjcw4PJpIvKWswil8';
-    protected const ACCESS_TOKEN = '174b0977174b0977174b09772a173a41301174b174b097749d406ac389fd14cd082862a';
-    protected const APP_ID = "7424071";
+    const CLIENT_SECRET = 'vrikjcw4PJpIvKWswil8';
+    const ACCESS_TOKEN = '174b0977174b0977174b09772a173a41301174b174b097749d406ac389fd14cd082862a';
+    const APP_ID = "7424071";
 
-    private const HTTP_CODE_NAMES = [
+    const HTTP_CODE_NAMES = [
       "200" => "OK", // Ответ на успешные GET, PUT, PATCH или DELETE. Этот код также используется для POST, который не приводит к созданию.
       "201" => "Created", // Этот код состояния является ответом на POST, который приводит к созданию.
       "204" => "No Content", // Нет содержимого. Это ответ на успешный запрос, который не будет возвращать тело (например, запрос DELETE)
@@ -21,10 +21,10 @@ class API
       "500" => "Internal Server Error" // Любая внутренняя ошибка сервера, которая не входит в рамки остальных ошибок класса
     ];
 
-    private const HOST = "127.0.0.1:3306";
-    private const USERNAME = "root";
-    private const PASSWORD = "";
-    private const DATABASE = "vkapp-mood";
+    const HOST = "127.0.0.1";
+    const USERNAME = "root";
+    const PASSWORD = "";
+    const DATABASE = "vkapp-mood";
     protected $DBH;
 
     public function __construct()
@@ -37,7 +37,7 @@ class API
         }
     }
 
-    protected function getAccess($userId)
+    public function getAccess($userId)
     {
         $query = "SELECT * FROM statAccess WHERE toId = :toId";
 
@@ -49,7 +49,7 @@ class API
         return $res;
     }
 
-    protected function checkAccess($userId, $users)
+    public function checkAccess($userId, $users)
     {
         $access = $this->getAccess($userId);
         $access[] = $userId;
@@ -59,7 +59,7 @@ class API
         }
     }
 
-    protected function getUsers($userId, $users)
+    public function getUsers($userId, $users)
     {
         if (is_null($users)) { // Формируем список юзеров к которым есть доступ
             $users = $this->getAccess($userId);
@@ -123,7 +123,7 @@ class API
         exit(0);
     }
 
-    protected function getParams($data, $required, $optional = [])
+    public function getParams($data, $required, $optional = [])
     {
         $res = [];
 

@@ -7,7 +7,8 @@ class Complaints extends API
     public function route($method, $url, $data, $userId)
     {
         if ($method == 'POST' && count($url) == 0) {
-            $this->createComplaint($data, $userId);
+            $res = $this->createComplaint($data, $userId);
+            $this->sendResponse(null, 201);
         } else {
             $this->sendResponse("No such method in 'complaints' table", 400);
         }
@@ -29,7 +30,7 @@ class Complaints extends API
         return $res;
     }
 
-    private function createComplaint($data, $userId)
+    public function createComplaint($data, $userId)
     {
         // Данные запроса
         $data = $this->getParams($data, ["entryId"]);
@@ -56,8 +57,7 @@ class Complaints extends API
         }
 
         // Делаем запрос
-        $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
-        $this->sendResponse(null, 204);
+        return $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
     }
 }
 

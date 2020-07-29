@@ -1,23 +1,27 @@
 <?php
 
 include_once __DIR__ . "./../api.php";
+include_once __DIR__ . "./../utils/vkApiQuery.php";
 
 class StatAccess extends API
 {
     public function route($method, $url, $data, $userId)
     {
         if ($method == 'GET' && count($url) == 0) {
-            $this->getUserPairs($data, $userId);
+            $res = $this->getUserPairs($data, $userId);
+            $this->sendResponse($res);
         } elseif ($method == 'POST' && count($url) == 0) {
-            $this->createUserPair($data, $userId);
+            $res = $this->createUserPair($data, $userId);
+            $this->sendResponse($res, 201);
         } elseif ($method == 'DELETE' && count($url) == 0) {
-            $this->deleteUserPair($data, $userId);
+            $res = $this->deleteUserPair($data, $userId);
+            $this->sendResponse(null, 204);
         } else {
             $this->sendResponse("No such method in 'statAccess' table", 400);
         }
     }
 
-    private function getUserPairs($data, $userId)
+    public function getUserPairs($data, $userId)
     {
         // Данные запроса
         $query = "SELECT * FROM statAccess WHERE";
@@ -43,17 +47,13 @@ class StatAccess extends API
             ];
         }, $res);
 
-        $this->sendResponse($res);
+        return $res;
     }
 
     private function sendAccessNotif($users, $userId)
     {
-        $url = "https://api.vk.com/method/users.get?v=5.120&lang=ru";
-        $url .= "&user_ids=" . $userId;
-        $url .= "&access_token=" . self::ACCESS_TOKEN;
-
-        $userData = file_get_contents($url);
-        $userData = json_decode($userData, true)["response"][0];
+        $params["user_ids"] = $userId;
+        $userData = vkApiQuery("users.get", $params)["response"][0];
         $userName = $userData["first_name"] . " " . $userData["last_name"];
 
         $message = "$userName дал вам доступ к своей статистике";
@@ -69,7 +69,7 @@ class StatAccess extends API
         $sender->send($users, $message);
     }
 
-    private function createUserPair($data, $userId)
+    public function createUserPair($data, $userId)
     {
         // Данные запроса
         $friends = $this->getParams($data, ["toId"]);
@@ -92,10 +92,11 @@ class StatAccess extends API
         // Делаем запрос
         $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT", "NO_COLON"]);
         $this->sendAccessNotif($friends, $userId);
-        $this->sendResponse($res, 201);
+
+        return $res;
     }
 
-    private function deleteUserPair($data, $userId)
+    public function deleteUserPair($data, $userId)
     {
         // Данные запроса
         $params = $this->getParams($data, ["toId"]);
@@ -104,8 +105,7 @@ class StatAccess extends API
         array_unshift($params, $userId);
 
         // Делаем запрос
-        $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT", "NO_COLON"]);
-        $this->sendResponse(null, 204);
+        return $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT", "NO_COLON"]);
     }
 }
 

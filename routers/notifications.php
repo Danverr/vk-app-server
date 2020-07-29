@@ -7,15 +7,17 @@ class Notifications extends API
     public function route($method, $url, $data, $userId)
     {
         if ($method == 'GET' && count($url) == 0) {
-            $this->getNotifications($data, $userId);
+            $res = $this->getNotifications($data, $userId);
+            $this->sendResponse($res);
         } elseif ($method == 'PUT' && count($url) == 0) {
-            $this->updateNotifications($data, $userId);
+            $res = $this->updateNotifications($data, $userId);
+            $this->sendResponse(null, 204);
         } else {
             $this->sendResponse("No such method in 'notifications' table", 400);
         }
     }
 
-    private function getNotifications($data, $userId)
+    public function getNotifications($data, $userId)
     {
         // Данные запроса
         $query = "SELECT createEntry, lowStats, accessGiven FROM notifications WHERE userId=:userId";
@@ -25,7 +27,7 @@ class Notifications extends API
         $res = $this->pdoQuery($query, $params);
 
         if (count($res)) {
-            $this->sendResponse($res[0]);
+            return $res[0];
         } else {
             $params = [
                 "userId" => $userId,
@@ -38,11 +40,11 @@ class Notifications extends API
             $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
 
             unset($params["userId"]);
-            $this->sendResponse($params);
+            return $params;
         }
     }
 
-    private function updateNotifications($data, $userId)
+    public function updateNotifications($data, $userId)
     {
         // Данные запроса
         $params = $this->getParams($data, [], ["lowStats", "accessGiven"]);
@@ -75,7 +77,6 @@ class Notifications extends API
           "userId" => $userId,
         ]);
 
-        // Делаем запрос
         if (count($res) == 0) {
             $params["userId"] = $userId;
             $query = "INSERT INTO notifications SET " . getSetters($params);
@@ -84,8 +85,8 @@ class Notifications extends API
             $params["userId"] = $userId;
         }
 
-        $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
-        $this->sendResponse(null, 204);
+        // Делаем запрос
+        return $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
     }
 }
 

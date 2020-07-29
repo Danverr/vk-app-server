@@ -1,29 +1,32 @@
 <?php
 
 include_once __DIR__ . "./../api.php";
+include_once __DIR__ . "./../utils/vkApiQuery.php";
 
 class Entries extends API
 {
     public function route($method, $url, $data, $userId)
     {
         if ($method == 'GET' && count($url) == 0) {
-            $this->getEntries($data, $userId);
-        } elseif ($method == 'GET' && count($url) == 1 && $url[0] == "stats") {
-            $this->getStats($data, $userId);
+            $res = $this->getEntries($data, $userId);
+            $this->sendResponse($res);
         } elseif ($method == 'POST' && count($url) == 0) {
-            $this->createEntries($data, $userId);
+            $res = $this->createEntries($data, $userId);
+            $this->sendResponse($this->DBH->lastInsertId(), 201);
         } elseif ($method == 'PUT' && count($url) == 0) {
-            $this->updateEntry($data, $userId);
+            $res = $this->updateEntry($data, $userId);
+            $this->sendResponse(null, 204);
         } elseif ($method == 'DELETE' && count($url) == 0) {
-            $this->deleteEntry($data, $userId);
+            $res = $this->deleteEntry($data, $userId);
+            $this->sendResponse(null, 204);
         } else {
             $this->sendResponse("No such method in 'entries' table", 400);
         }
     }
 
-    private function getEntries($data, $userId)
+    public function getEntries($data, $userId)
     {
-        $data = $this->getParams($data, [], ["users", "day", "month", "lastId", "lastDate","count"]);
+        $data = $this->getParams($data, [], ["users", "afterDate", "beforeDate","count"]);
         $data["users"] = $this->getUsers($userId, $data["users"]);
         $params = [];
 
@@ -35,44 +38,30 @@ class Entries extends API
             $params = array_merge($params, $data["users"]);
         }
 
-        // Определяем временной промежуток
-        $timeInterval = "";
-
-        if (!is_null($data["day"])) {
-            $timeInterval .= "AND date >= ? AND date < DATE_ADD(?, INTERVAL 1 DAY)";
-            $params[] = $data["day"];
-            $params[] = $data["day"];
-        } elseif (!is_null($data["month"])) {
-            $timeInterval .= "AND date >= ? AND date < DATE_ADD(?, INTERVAL 1 MONTH)";
-            $data["month"] .= "-01";
-            $params[] = $data["month"];
-            $params[] = $data["month"];
-        }
-
-        // После какого ID брать записи
-        $lastId = "";
-
-        if (!is_null($data["lastId"])) {
-            $lastId = "AND entryId < ?";
-            $params[] = $data["lastId"];
-        }
-
         // После какой даты брать записи
-        $lastDate = "";
+        $afterDate = "";
 
-        if (!is_null($data["lastDate"])) {
-            $lastDate = "AND date < ?";
-            $params[] = $data["lastDate"];
+        if (!is_null($data["afterDate"])) {
+            $afterDate = "AND date >= ?";
+            $params[] = $data["afterDate"];
+        }
+
+        // До какой даты брать записи
+        $beforeDate = "";
+
+        if (!is_null($data["beforeDate"])) {
+            $beforeDate = "AND date < ?";
+            $params[] = $data["beforeDate"];
         }
 
         // Определяем кол-во записей
-        $limit = !is_null($data["count"]) ? ("LIMIT " . (int)$data["count"]) : "";
+        $count = !is_null($data["count"]) ? ("LIMIT " . (int)$data["count"]) : "";
 
         // Порядок записей
         $order = "ORDER BY date DESC, entryId ASC";
 
         // Формируем запросы
-        $subQuery = "SELECT entryId FROM entries WHERE $matchUsers $timeInterval $lastId $lastDate $order $limit";
+        $subQuery = "SELECT entryId FROM entries WHERE $matchUsers $afterDate $beforeDate $order $count";
         $query = "SELECT * FROM ($subQuery) ids INNER JOIN entries using(entryId) $order";
 
         // Делаем запрос
@@ -86,7 +75,7 @@ class Entries extends API
             }
         }
 
-        $this->sendResponse($res);
+        return $res;
     }
 
     private function formatEntry($entry)
@@ -147,13 +136,10 @@ class Entries extends API
 
     private function sendLowHealthNotif($userId)
     {
-        $url = "https://api.vk.com/method/users.get?v=5.120&lang=ru";
-        $url .= "&user_ids=" . $userId;
-        $url .= "&name_case=gen";
-        $url .= "&access_token=" . self::ACCESS_TOKEN;
+        $params["user_ids"] = $userId;
+        $params["name_case"] = "gen";
 
-        $userData = file_get_contents($url);
-        $userData = json_decode($userData, true)["response"][0];
+        $userData = vkApiQuery("users.get", $params)["response"][0];
         $userName = $userData["first_name"] . " " . $userData["last_name"];
 
         $message = "Кажется, у $userName сейчас не лучшие дни. Поддержи друга в трудную минуту!";
@@ -171,7 +157,7 @@ class Entries extends API
         $sender->send($users, $message);
     }
 
-    private function createEntries($data, $userId)
+    public function createEntries($data, $userId)
     {
         // Данные запроса
         $data = $this->getParams($data, ["entries"]);
@@ -203,11 +189,10 @@ class Entries extends API
         }
 
         // Делаем запрос
-        $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT", "NO_COLON"]);
-        $this->sendResponse($this->DBH->lastInsertId(), 201);
+        return $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT", "NO_COLON"]);
     }
 
-    private function updateEntry($data, $userId)
+    public function updateEntry($data, $userId)
     {
         // Данные запроса
         $optionalParamsName = ["mood", "stress", "anxiety", "isPublic", "title", "note"];
@@ -241,11 +226,10 @@ class Entries extends API
         }
 
         // Делаем запрос
-        $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
-        $this->sendResponse(null, 204);
+        return $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
     }
 
-    private function deleteEntry($data, $userId)
+    public function deleteEntry($data, $userId)
     {
         // Данные запроса
         $query = "DELETE FROM entries WHERE entryId = :entryId";
@@ -260,8 +244,7 @@ class Entries extends API
         }
 
         // Делаем запрос
-        $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
-        $this->sendResponse(null, 204);
+        return $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
     }
 }
 
