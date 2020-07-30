@@ -1,0 +1,19 @@
+
+[Thu, 30 Jul 2020 11:57:03 +0300]
+IP: 127.0.0.1
+VK ID: 
+User agent: PostmanRuntime/7.26.2
+Exception: 500 Internal Server Error: SQLSTATE[HY000] [1045] Access denied for user 'user'@'localhost' (using password: YES) in B:\Soft\OSPanel\domains\vk-app-server\v1.0\api.php:117
+Stack trace:
+#0 B:\Soft\OSPanel\domains\vk-app-server\v1.0\api.php(33): API->sendResponse('500 Internal Se...', 500)
+#1 B:\Soft\OSPanel\domains\vk-app-server\index.php(36): API->__construct()
+#2 {main}
+
+[Thu, 30 Jul 2020 12:37:08 +0300]
+IP: 127.0.0.1
+VK ID: 331480448
+User agent: PostmanRuntime/7.26.2
+Exception: 404 Not found: Invalid table name in B:\Soft\OSPanel\domains\vk-app-server\v1.0\api.php:99
+Stack trace:
+#0 B:\Soft\OSPanel\domains\vk-app-server\index.php(52): API->sendResponse('404 Not found: ...', 404)
+#1 {main}
