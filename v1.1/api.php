@@ -1,7 +1,7 @@
 <?php
 
-include_once __DIR__ . "./utils/formatters.php";
-include_once __DIR__ . "./../appData.php";
+include_once __DIR__ . "/utils/formatters.php";
+include_once __DIR__ . "/../appData.php";
 
 class API extends AppData
 {

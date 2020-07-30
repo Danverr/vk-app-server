@@ -1,8 +1,8 @@
 <?php
 
-include_once __DIR__ . "./../api.php";
-include_once __DIR__ . "./../utils/formatters.php";
-include_once __DIR__ . "./../utils/notificationSender.php";
+include_once __DIR__ . "/../api.php";
+include_once __DIR__ . "/../utils/formatters.php";
+include_once __DIR__ . "/../utils/notificationSender.php";
 
 class Entries extends API
 {

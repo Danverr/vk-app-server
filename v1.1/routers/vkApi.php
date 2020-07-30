@@ -1,7 +1,7 @@
 <?php
 
-include_once __DIR__ . "./../api.php";
-include_once __DIR__ . "./../utils/vkApiQuery.php";
+include_once __DIR__ . "/../api.php";
+include_once __DIR__ . "/../utils/vkApiQuery.php";
 
 class VkApi extends API
 {

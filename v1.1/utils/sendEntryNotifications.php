@@ -1,7 +1,7 @@
 <?php
 
 include_once __DIR__ . "/../api.php";
-include_once __DIR__ . "./notificationSender.php";
+include_once __DIR__ . "/notificationSender.php";
 
 $MESSAGE = "Как прошел твой день? Сделай об этом запись в дневнике!";
 

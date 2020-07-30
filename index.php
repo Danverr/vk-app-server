@@ -1,7 +1,7 @@
 <?php
 
-error_reporting(E_ALL);
-ini_set('display_errors', 0);
+error_reporting(E_ALL & ~E_NOTICE);
+ini_set('display_errors', 1);
 
 // Заголовки для CORS
 header("Access-Control-Allow-Origin: *");
