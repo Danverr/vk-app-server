@@ -1,6 +1,7 @@
 <?php
 
 include_once __DIR__ . "/../api.php";
+include_once __DIR__ . "/../../logs/logger.php";
 
 class NotificationSender extends API
 {
@@ -28,39 +29,7 @@ class NotificationSender extends API
             $response = array_merge($response, $curResponse);
         }
 
+        logNotif($response, $message);
         return $response;
-    }
-
-    public function log($response, $message)
-    {
-        $FILE_PATH = __DIR__ . "/../logs/notifications.log";
-        $file = fopen($FILE_PATH, 'a');
-
-        $total = count($response);
-        $success = 0;
-        $errors = [];
-
-        foreach ($response as $res) {
-            if ($res["status"]) {
-                $success++;
-            } else {
-                $errors[$res["error"]["code"]]++;
-            }
-        }
-
-        $text = "\n[" . date(DateTime::RFC1123) . "]\n";
-        $text .= "Notifications sent: $total\n";
-        $text .= "Message: $message\n";
-
-        if ($total > 0) {
-            $text .= "Successfully: $success, ≈" . round($success * 100 / $total) . "%\n";
-
-            foreach ($errors as $code => $count) {
-                $text .= "Failed with code №$code: $count, ≈" . round($count * 100 / $total) . "%\n";
-            }
-        }
-
-        fwrite($file, $text);
-        fclose($file);
     }
 }

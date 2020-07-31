@@ -20,6 +20,9 @@ if ($method == "OPTIONS") {
 }
 
 try {
+    include_once __DIR__ . "/logs/logger.php";
+    include_once __DIR__ . '/getQueryData.php';
+
     // Разбираем url
     $url = (isset($_GET['q'])) ? $_GET['q'] : '';
     $url = rtrim($url, '/');
@@ -30,8 +33,6 @@ try {
     $url = array_slice($url, 2);
 
     include_once $version . '/api.php';
-    include_once $version . '/utils/getQueryData.php';
-    include_once $version . '/utils/logError.php';
 
     $api = new API();
 
@@ -54,5 +55,10 @@ try {
 
     $router->route($method, $url, $data, $userId);
 } catch (Exception $error) {
-    logError($error, $userId);
+    logError($error, $userId, $version);
+
+    try {
+        $api->sendResponse($error, 500);
+    } catch (Exception $e) {
+    }
 }
