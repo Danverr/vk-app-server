@@ -56,9 +56,4 @@ try {
     $router->route($method, $url, $data, $userId);
 } catch (Exception $error) {
     logError($error, $userId, $version);
-
-    try {
-        $api->sendResponse($error, 500);
-    } catch (Exception $e) {
-    }
 }

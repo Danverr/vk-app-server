@@ -27,7 +27,7 @@ class Entries extends API
 
     public function getEntries($data, $userId)
     {
-        $data = $this->getParams($data, [], ["users", "afterDate", "beforeDate","count"]);
+        $data = $this->getParams($data, [], ["users", "afterDate", "beforeDate", "beforeId","count"]);
         $data["users"] = $this->getUsers($userId, $data["users"]);
         $params = [];
 
@@ -47,19 +47,27 @@ class Entries extends API
             $params[] = $data["afterDate"];
         }
 
-        // До какой даты брать записи
+        // До какой даты и id брать записи 
         $beforeDate = "";
 
         if (!is_null($data["beforeDate"])) {
             $beforeDate = "AND date < ?";
             $params[] = $data["beforeDate"];
+
+            if(!is_null($data["beforeId"])){
+                $beforeDate = "AND (date < ? OR date = ? AND entryId < ?)";
+                $params[] = $data["beforeDate"];
+                $params[] = $data["beforeId"];
+            }
+        } elseif (!is_null($data["beforeId"])){
+            $this->sendResponse("You cant use 'beforeId' param without 'beforeDate'");
         }
 
         // Определяем кол-во записей
         $count = !is_null($data["count"]) ? ("LIMIT " . (int)$data["count"]) : "";
 
         // Порядок записей
-        $order = "ORDER BY date DESC, entryId ASC";
+        $order = "ORDER BY date DESC, entryId DESC";
 
         // Формируем запросы
         $subQuery = "SELECT entryId FROM entries WHERE $matchUsers $afterDate $beforeDate $order $count";
