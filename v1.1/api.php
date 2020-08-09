@@ -12,6 +12,7 @@ class API extends AppData
         try {
             $this->DBH = new PDO("mysql:host=" . self::HOST . ";dbname=" . self::DATABASE, self::USERNAME, self::PASSWORD);
             $this->DBH->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+            $this->DBH->exec("SET NAMES utf8mb4");
         } catch (PDOException $exception) {
             $this->sendResponse($exception->getMessage(), 500);
         }

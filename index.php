@@ -32,7 +32,12 @@ try {
     $table = $url[1];
     $url = array_slice($url, 2);
 
-    include_once $version . '/api.php';
+    if (!include_once $version . '/api.php') {
+        http_response_code(400);
+        $error = "400 Bad Request: Wrong API version";
+        echo $error;
+        throw new Exception($error);
+    }
 
     $api = new API();
 

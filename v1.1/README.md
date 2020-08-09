@@ -10,11 +10,15 @@
    * [DELETE /entries/](#delete-entries)
 * **notifications**
    * [GET /notifications/](#get-notifications)
-   * [PUT /notifications/](#put-notifications)    
+   * [PUT /notifications/](#put-notifications)
 * **complaints**
    * [POST /complaints/](#post-complaints)
 * **vkApi**
   * [GET /vkApi/](#get-vkapi)
+* **banlist**
+   * [GET /banlist/](#get-banlist)
+* **logs**
+   * [POST /logs/](#post-logs)
 
 ## GET /statAccess/
 Возвращает id пользователей, к которым есть доступ или которым дан доступ
@@ -199,3 +203,18 @@
 * ```params``` *(обязательно)* - Параметры метода в виде JSON объекта. Если метод не принимает никаких параметров, указать пустой объект.
 #### Ответ
 В случае успеха вернет ответ VK API
+
+## GET /banlist/
+Проверяет, забанен ли юзер
+#### Параметры
+Нет
+#### Ответ
+В случае успеха вернет true или false
+
+## POST /logs/
+Создает отчет об ошибке
+#### Параметры
+* ```userAgent``` *(обязательно)* - User Agent пользователя
+* ```error``` *(обязательно)* - Полный текст ошибки, включая Stack Trace
+#### Ответ
+В случае успеха вернет пустой ответ
