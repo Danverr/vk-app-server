@@ -47,19 +47,19 @@ class Entries extends API
             $params[] = $data["afterDate"];
         }
 
-        // До какой даты и id брать записи 
+        // До какой даты и id брать записи
         $beforeDate = "";
 
         if (!is_null($data["beforeDate"])) {
             $beforeDate = "AND date < ?";
             $params[] = $data["beforeDate"];
 
-            if(!is_null($data["beforeId"])){
+            if (!is_null($data["beforeId"])) {
                 $beforeDate = "AND (date < ? OR date = ? AND entryId < ?)";
                 $params[] = $data["beforeDate"];
                 $params[] = $data["beforeId"];
             }
-        } elseif (!is_null($data["beforeId"])){
+        } elseif (!is_null($data["beforeId"])) {
             $this->sendResponse("You cant use 'beforeId' param without 'beforeDate'");
         }
 

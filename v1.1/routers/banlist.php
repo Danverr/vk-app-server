@@ -22,7 +22,16 @@ class Banlist extends API
 
         // Делаем запрос
         $res =  $this->pdoQuery($query, $params);
-        return count($res) == 1;
+
+        if (count($res) == 0) {
+            $res = ["isBanned" => false];
+        } else {
+            $res = $res[0];
+            unset($res["userId"]);
+            $res["isBanned"] = true;
+        }
+
+        return $res;
     }
 }
 

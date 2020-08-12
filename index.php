@@ -53,6 +53,16 @@ try {
         $api->sendResponse("Wrong VK Sign", 401);
     }
 
+    // Проверяем юзера на бан
+    if ($table != "banlist") {
+        $isBanned = $api->pdoQuery("SELECT * FROM banlist WHERE userId = :userId", ["userId" => $userId]);
+        $isBanned = count($isBanned) == 1;
+
+        if ($isBanned) {
+            $api->sendResponse("You are banned", 403);
+        }
+    }
+
     // Подключаем роутер и запускаем главную функцию
     if (!include_once $version . '/routers/' . $table . '.php') {
         $api->sendResponse("Invalid table name", 404);
