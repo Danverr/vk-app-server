@@ -230,10 +230,6 @@ class Entries extends API
             }
         }
 
-        if ($this->isLowHealthEntry($entry)) {
-            $this->sendLowHealthNotif($userId);
-        }
-
         // Делаем запрос
         return $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
     }
