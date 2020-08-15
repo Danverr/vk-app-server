@@ -54,11 +54,10 @@ try {
     }
 
     // Проверяем юзера на бан
-    if ($table != "banlist") {
-        $isBanned = $api->pdoQuery("SELECT * FROM banlist WHERE userId = :userId", ["userId" => $userId]);
-        $isBanned = count($isBanned) == 1;
+    if ($table != "users") {
+        $isBanned = $api->pdoQuery("SELECT isBanned FROM users WHERE userId = :userId", ["userId" => $userId]);
 
-        if ($isBanned) {
+        if (count($isBanned) == 1 && $isBanned[0]["isBanned"] != null) {
             $api->sendResponse("You are banned", 403);
         }
     }
@@ -66,6 +65,22 @@ try {
     // Подключаем роутер и запускаем главную функцию
     if (!include_once $version . '/routers/' . $table . '.php') {
         $api->sendResponse("Invalid table name", 404);
+    }
+
+    $router = null;
+
+    if ($table == "complaints") {
+        $router = new Complaints();
+    } elseif ($table == "entries") {
+        $router = new Entries();
+    } elseif ($table == "logs") {
+        $router = new Logs();
+    } elseif ($table == "statAccess") {
+        $router = new StatAccess();
+    } elseif ($table == "users") {
+        $router = new Users();
+    } elseif ($table == "vkApi") {
+        $router = new VkApi();
     }
 
     $router->route($method, $url, $data, $userId);
