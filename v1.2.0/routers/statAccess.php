@@ -73,36 +73,29 @@ class StatAccess extends API
     public function createUserPair($data, $userId)
     {
         // Данные запроса
-        $data = $this->getParams($data, ["toId", "token"]);
-        $friends = explode(",", $data["toId"]);
+        $data = $this->getParams($data, ["users"]);
+        $friends = json_decode($data["users"], true);
         $query = "INSERT INTO statAccess (fromId, toId) VALUES ";
         $params = [];
 
-        // Заполняем параметры
+        // Проверяем друзей
         foreach ($friends as $friend) {
-            if ($friend == $userId) {
-                $this->sendResponse("You cant add access to yourself", 400);
+            $friend = $this->getParams($friend, ["id", "sign"]);
+            $sign = md5($userId . "_" . $friend["id"] . "_3_" . self::CLIENT_SECRET);
+
+            if ($friend["id"] == $userId) {
+                $this->sendResponse("You cant give access to yourself", 400);
+            } elseif($sign != $friend["sign"]){
+                $this->sendResponse("Sign is incorrect or user " . $friend["id"] . " is not your friend", 400);
             }
 
             $query .= getPlaceholders(2) . ", ";
             $params[] = $userId;
-            $params[] = $friend;
+            $params[] = $friend["id"];
         }
 
         $query = rtrim($query, ", ");
         $query .= " ON DUPLICATE KEY UPDATE toId = toId";
-
-        // Проверяем, в друзьях ли юзер
-        $areFriends = vkApiQuery("friends.areFriends", [
-            "access_token" => $data["token"],
-            "user_ids" => $data["toId"]
-        ]);
-        
-        foreach ($areFriends as $friend) {
-            if($friend["friend_status"] != 3){
-                $this->sendResponse("User " . $friend["user_id"] . " is not your friend", 400);
-            }
-        }
 
         // Делаем запрос
         $res = $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT", "NO_COLON"]);

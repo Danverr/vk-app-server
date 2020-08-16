@@ -15,7 +15,6 @@
    * [POST /complaints/](#post-complaints)
 * **vkApi**
    * [GET /vkApi/users.get](#get-vkapiusersget)
-   * [GET /vkApi/token](#get-vkapitoken)
 * **logs**
    * [POST /logs/](#post-logs)
 
@@ -46,8 +45,9 @@
 ## POST /statAccess/
 Создает новую пару доступа.
 #### Параметры
-*  ```toId``` *(обязательно)* - VK ID пользователей, котрым нужно дать доступ, через запятую
-*  ```token``` *(обязательно)* - Токен пользователя с доступом к списку друзей
+*  ```users``` *(обязательно)* - Массив JSON объектов с полями:
+   *  ```id``` *(обязательно)* - VK ID пользователя
+   *  ```sign``` *(обязательно)* - Подпись, полученная с помощью метода [friends.areFriends](https://vk.com/dev/friends.areFriends)
 #### Ответ
 В случае успеха вернет кол-во созданных пар
 
@@ -208,13 +208,6 @@
 * ```users``` *(обязательно)* - Аналогичен параметру [user_ids](https://vk.com/dev/users.get) из документации к VK API
 #### Ответ
 В случае успеха вернет ответ VK API (содержимое поля response или поля error).
-
-## GET /vkApi/token
-Возвращает токен юзера
-#### Параметры
-* ```code``` *(обязательно)* - Временный код, полученный после запроса к https://oauth.vk.com/authorize с параметром ```redirect_uri=https://vk.com/app7424071``` ([подробнее](https://vk.com/dev/authcode_flow_user)).
-#### Ответ
-В случае успеха вернет строку - токен юзера.
 
 ## POST /logs/
 Создает отчет об ошибке
