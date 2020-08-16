@@ -14,7 +14,8 @@
 * **complaints**
    * [POST /complaints/](#post-complaints)
 * **vkApi**
-   * [GET /vkApi/users.get](#get-vkapiusers.get)
+   * [GET /vkApi/users.get](#get-vkapiusersget)
+   * [GET /vkApi/token](#get-vkapitoken)
 * **logs**
    * [POST /logs/](#post-logs)
 
@@ -202,11 +203,18 @@
 В случае успеха вернет пустой ответ
 
 ## GET /vkApi/users.get
-Выполняет запрос к методу users.get VK API с токеном сервиса
+Выполняет запрос к методу users.get VK API с токеном сервиса. Параметры: ```photo_50, photo_100, sex```
 #### Параметры
 * ```users``` *(обязательно)* - Аналогичен параметру [user_ids](https://vk.com/dev/users.get) из документации к VK API
 #### Ответ
-В случае успеха вернет ответ VK API
+В случае успеха вернет ответ VK API (содержимое поля response или поля error).
+
+## GET /vkApi/token
+Возвращает токен юзера
+#### Параметры
+* ```code``` *(обязательно)* - Временный код, полученный после запроса к https://oauth.vk.com/authorize с параметром ```redirect_uri=https://vk.com/app7424071``` ([подробнее](https://vk.com/dev/authcode_flow_user)).
+#### Ответ
+В случае успеха вернет строку - токен юзера.
 
 ## POST /logs/
 Создает отчет об ошибке

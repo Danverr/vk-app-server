@@ -5,6 +5,7 @@ class AppData
     const CLIENT_SECRET = 'vrikjcw4PJpIvKWswil8';
     const ACCESS_TOKEN = '174b0977174b0977174b09772a173a41301174b174b097749d406ac389fd14cd082862a';
     const APP_ID = "7424071";
+    const APP_URL = "https://vk.com/app" . self::APP_ID;
 
     const HOST = "127.0.0.1";
     const USERNAME = "root";

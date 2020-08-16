@@ -46,7 +46,7 @@ function logNotif($response, $message)
             foreach ($errors as $code => $users) {
                 $count = count($users);
                 $text .= "Failed with code №$code: $count, ≈" . round($count * 100 / $total) . "%\n";
-                $text .= "Code №$code users: " . implode(", ", $users);
+                $text .= "Code №$code users: " . implode(", ", $users) . "\n";
             }
         }
 

@@ -81,6 +81,10 @@ try {
         $router = new Users();
     } elseif ($table == "vkApi") {
         $router = new VkApi();
+    } elseif ($table == "banlist") {
+        $router = new Banlist();
+    } elseif ($table == "notifications") {
+        $router = new Notifications();
     }
 
     $router->route($method, $url, $data, $userId);
