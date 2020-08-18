@@ -72,7 +72,8 @@ class Users extends API
 
         // Делаем запрос
         $params["userId"] = $userId;
-        $query = "REPLACE INTO users SET " . getSetters($params);
+        $setters = getSetters($params);
+        $query = "INSERT INTO users SET $setters ON DUPLICATE KEY UPDATE $setters";
 
         return $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
     }
@@ -81,7 +82,8 @@ class Users extends API
     {
         // Данные запроса
         $params = ["importAttempts" => $attempts, "userId" => $userId];
-        $query = "REPLACE INTO users SET " . getSetters($params);
+        $setters = getSetters($params);
+        $query = "INSERT INTO users SET $setters ON DUPLICATE KEY UPDATE $setters";
 
         // Делаем запрос
         return $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
