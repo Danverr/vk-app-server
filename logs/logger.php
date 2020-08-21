@@ -1,14 +1,15 @@
 <?php
 
-function logError($error, $userId, $version)
+function logError($error, $userId, $url, $data)
 {
     $LOG_PATH = __DIR__ . "/routers.log";
     $file = fopen($LOG_PATH, 'a');
 
     $text = "\n[" . date(DateTime::RFC1123) . "]\n";
-    $text .= "API Version: $version\n";
+    $text .= "URL: $url\n";
     $text .= "IP: " . $_SERVER["REMOTE_ADDR"] . "\n";
     $text .= "VK ID: $userId\n";
+    $text .= "Query Data: " . var_export($data, true) . "\n";
     $text .= "User agent: " . $_SERVER["HTTP_USER_AGENT"] . "\n";
     $text .= $error . "\n";
 

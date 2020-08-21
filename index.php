@@ -89,5 +89,5 @@ try {
 
     $router->route($method, $url, $data, $userId);
 } catch (Exception $error) {
-    logError($error, $userId, $version);
+    logError($error, $userId, $_GET['q'], $data);
 }
