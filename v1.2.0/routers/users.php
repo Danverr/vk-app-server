@@ -45,7 +45,8 @@ class Users extends API
     {
         // Данные запроса
         $params = $this->getParams($data, [], ["lowStatsNotif", "accessGivenNotif"]);
-        $query = "UPDATE users SET ";
+        $query = "INSERT INTO users SET";
+        $setters = "";
 
         // Форматируем данные
         foreach ($params as $key => $value) {
@@ -56,7 +57,7 @@ class Users extends API
         // Добавляем кастомный параметр
         if (!is_null($data["createEntryNotif"])) {
             if ($data["createEntryNotif"] == "null") { // null
-                $query .= "createEntryNotif = null" . (count($params) ? ", " : " ");
+                $setters .= "createEntryNotif = null" . (count($params) ? ", " : " ");
             } else { // time
                 $nums = explode(":", $data["createEntryNotif"]);
 
@@ -72,8 +73,8 @@ class Users extends API
 
         // Делаем запрос
         $params["userId"] = $userId;
-        $setters = getSetters($params);
-        $query = "INSERT INTO users SET $setters ON DUPLICATE KEY UPDATE $setters";
+        $setters .= " " . getSetters($params);
+        $query .= " $setters ON DUPLICATE KEY UPDATE $setters";
 
         return $this->pdoQuery($query, $params, ["RETURN_ROW_COUNT"]);
     }
